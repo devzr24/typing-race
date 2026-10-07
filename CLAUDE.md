@@ -36,7 +36,18 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `src/server/` — côté Socket.IO : identité tirée du cookie Auth.js, abonnements aux salles,
   départs différés ; `realtime.ts` partage l'instance Socket.IO avec les actions de Next.
 - `src/app/room/[code]` — page de salle (liste des participants en direct).
+- `src/i18n/` — langues (ADR 0009) : `messages/fr.ts` (référence) et `en.ts`, `format()`,
+  `errorText()`, lecture des cookies `lang`/`theme`.
+- `src/app/globals.css` — SEUL endroit des couleurs et polices (bloc `@theme`, valeurs provisoires).
 - `docs/adr/` — décisions d'architecture (ADR). Toute nouvelle décision structurante = nouvel ADR.
+
+## Interface
+
+- **Aucun texte en dur** dans les composants : tout passe par `src/i18n/messages/` (FR et EN).
+  Les validations et actions renvoient des codes d'erreur (`ErrorCode`), jamais des phrases.
+- **Aucune couleur ni police en dur** : uniquement les jetons de `globals.css`
+  (`bg-background`, `text-foreground`, `text-muted`, `border-border`, `bg-surface`, `text-danger`).
+- Ne pas inventer de choix visuels : palette, polices et nom du site viendront de la direction artistique.
 
 ## ADR
 

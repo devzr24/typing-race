@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * SEUL endroit où sont définies les couleurs et les polices du site.
+ * Valeurs NEUTRES ET PROVISOIRES : elles seront remplacées par la direction artistique.
+ * Chaque couleur a sa valeur claire et foncée : light-dark(clair, foncé).
+ * Utilisation dans les composants : bg-background, text-foreground, text-muted,
+ * border-border, bg-surface, text-danger, border-danger, font-sans, font-mono.
+ */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --color-background: light-dark(#ffffff, #121212);
+  --color-foreground: light-dark(#1a1a1a, #ededed);
+  --color-muted: light-dark(#666666, #a3a3a3);
+  --color-border: light-dark(#d4d4d4, #3a3a3a);
+  --color-surface: light-dark(#f2f2f2, #1f1f1f);
+  --color-danger: light-dark(#b42318, #f97066);
+}
+
+/*
+ * Thème : sans choix, on suit le système (color-scheme: light dark).
+ * Un choix explicite pose la classe .light ou .dark sur <html>, rendue côté serveur
+ * à partir du cookie : aucun flash au chargement.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light dark;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root.light {
+  color-scheme: light;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
 }

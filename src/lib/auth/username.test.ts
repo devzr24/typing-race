@@ -21,23 +21,23 @@ describe("validateUsername", () => {
   });
 
   it("refuse un nom vide", () => {
-    expect(validateUsername("")).toMatch(/obligatoire/);
+    expect(validateUsername("")).toBe("required");
   });
 
   it("refuse un nom trop court ou trop long", () => {
-    expect(validateUsername("ab")).toMatch(/entre 3 et 24/);
-    expect(validateUsername("a".repeat(25))).toMatch(/entre 3 et 24/);
+    expect(validateUsername("ab")).toBe("usernameLength");
+    expect(validateUsername("a".repeat(25))).toBe("usernameLength");
   });
 
   it("refuse les caractères non autorisés", () => {
-    expect(validateUsername("élise")).toMatch(/ne peut contenir/);
-    expect(validateUsername("alex dupont")).toMatch(/ne peut contenir/);
-    expect(validateUsername("alex.d")).toMatch(/ne peut contenir/);
+    expect(validateUsername("élise")).toBe("usernameChars");
+    expect(validateUsername("alex dupont")).toBe("usernameChars");
+    expect(validateUsername("alex.d")).toBe("usernameChars");
   });
 
   it("refuse un nom qui commence par _ ou -", () => {
-    expect(validateUsername("_alex")).toMatch(/commencer/);
-    expect(validateUsername("-alex")).toMatch(/commencer/);
+    expect(validateUsername("_alex")).toBe("usernameStart");
+    expect(validateUsername("-alex")).toBe("usernameStart");
   });
 });
 

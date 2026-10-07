@@ -1,3 +1,4 @@
+import type { ErrorCode } from "@/i18n/messages";
 import { normalizeRoomCode, validateRoomCode } from "./code";
 import { generateUniqueRoomCode } from "./code-generator";
 import { CodeTakenError, type RoomStore } from "./store";
@@ -50,7 +51,7 @@ export async function createRoom(store: RoomStore, host: Identity): Promise<stri
   throw new Error("Impossible de créer la salle.");
 }
 
-export type JoinResult = { ok: true; code: string } | { ok: false; error: string };
+export type JoinResult = { ok: true; code: string } | { ok: false; error: ErrorCode };
 
 /** LOBBY-02 : rejoint une salle par son code. Rejoindre une salle où l'on est déjà ne change rien. */
 export async function joinRoom(
@@ -63,11 +64,11 @@ export async function joinRoom(
   if (codeError) return { ok: false, error: codeError };
 
   return store.withRoom(code, async (room, locked) => {
-    if (!room) return { ok: false, error: "Aucune salle ne correspond à ce code." };
+    if (!room) return { ok: false, error: "roomNotFound" };
     const alreadyIn = room.participants.some((p) => p.key === identity.key);
     if (alreadyIn) return { ok: true, code };
     if (room.status !== "EN_ATTENTE") {
-      return { ok: false, error: "Cette salle n'accepte plus de nouveaux participants." };
+      return { ok: false, error: "roomNotWaiting" };
     }
     await locked.addParticipant(identity);
     return { ok: true, code };

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import type { ErrorCode } from "@/i18n/messages";
 import { publishRoom } from "@/server/realtime";
 import { normalizeRoomCode } from "./code";
 import { identityFromSession } from "./identity";
@@ -9,17 +10,13 @@ import { roomStore } from "./prisma-store";
 import { createRoom, joinRoom, leaveRoom } from "./service";
 
 export type RoomFormState = {
-  error?: string;
-  /** Vrai si l'erreur vient de l'absence de session : on propose alors le lien de connexion. */
-  needsLogin?: boolean;
+  error?: ErrorCode;
   values?: { code?: string };
 };
 
-const LOGIN_REQUIRED = "Connecte-toi ou continue en invité pour jouer.";
-
 export async function createRoomAction(): Promise<RoomFormState> {
   const identity = identityFromSession(await auth());
-  if (!identity) return { error: LOGIN_REQUIRED, needsLogin: true };
+  if (!identity) return { error: "loginRequired" };
   const code = await createRoom(roomStore, identity);
   redirect(`/room/${code}`);
 }
@@ -28,7 +25,7 @@ export async function joinRoomAction(_prev: RoomFormState, formData: FormData): 
   const rawCode = String(formData.get("code") ?? "");
   const values = { code: rawCode };
   const identity = identityFromSession(await auth());
-  if (!identity) return { error: LOGIN_REQUIRED, needsLogin: true, values };
+  if (!identity) return { error: "loginRequired", values };
 
   const result = await joinRoom(roomStore, rawCode, identity);
   if (!result.ok) return { error: result.error, values };

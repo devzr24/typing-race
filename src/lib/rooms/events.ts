@@ -1,10 +1,11 @@
+import type { ErrorCode } from "@/i18n/messages";
 import type { PublicRoom } from "./types";
 
 // Événements Socket.IO échangés entre le navigateur et le serveur (typés des deux côtés).
 
 export type WatchResponse =
   | { ok: true; room: PublicRoom; selfId: string }
-  | { ok: false; error: string };
+  | { ok: false; error: ErrorCode };
 
 export interface ServerToClientEvents {
   /** Nouvelle liste des participants ; null si la salle a été fermée. */

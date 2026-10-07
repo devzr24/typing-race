@@ -1,17 +1,12 @@
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
+import type { ErrorCode } from "@/i18n/messages";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "./limits";
 
-/** Retourne un message d'erreur en français, ou null si le mot de passe est acceptable. */
-export function validatePassword(password: string): string | null {
-  if (password.length === 0) {
-    return "Le mot de passe est obligatoire.";
-  }
-  if (password.length < PASSWORD_MIN_LENGTH) {
-    return `Le mot de passe doit contenir au moins ${PASSWORD_MIN_LENGTH} caractères.`;
-  }
-  if (password.length > PASSWORD_MAX_LENGTH) {
-    return `Le mot de passe ne peut pas dépasser ${PASSWORD_MAX_LENGTH} caractères.`;
-  }
+/** Retourne le code d'erreur (traduit par l'interface), ou null si le mot de passe est acceptable. */
+export function validatePassword(password: string): ErrorCode | null {
+  if (password.length === 0) return "required";
+  if (password.length < PASSWORD_MIN_LENGTH) return "passwordTooShort";
+  if (password.length > PASSWORD_MAX_LENGTH) return "passwordTooLong";
   return null;
 }
 

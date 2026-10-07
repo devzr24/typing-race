@@ -1,3 +1,4 @@
+import type { ErrorCode } from "@/i18n/messages";
 import { USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from "./limits";
 
 const ALLOWED_CHARS = /^[a-z0-9_-]+$/;
@@ -8,20 +9,14 @@ export function normalizeUsername(input: string): string {
   return input.trim().toLowerCase();
 }
 
-/** Retourne un message d'erreur en français, ou null si le nom (déjà normalisé) est valide. */
-export function validateUsername(username: string): string | null {
-  if (username.length === 0) {
-    return "Le nom d'utilisateur est obligatoire.";
-  }
+/** Retourne le code d'erreur (traduit par l'interface), ou null si le nom (déjà normalisé) est valide. */
+export function validateUsername(username: string): ErrorCode | null {
+  if (username.length === 0) return "required";
   if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
-    return `Le nom d'utilisateur doit contenir entre ${USERNAME_MIN_LENGTH} et ${USERNAME_MAX_LENGTH} caractères.`;
+    return "usernameLength";
   }
-  if (!ALLOWED_CHARS.test(username)) {
-    return "Le nom d'utilisateur ne peut contenir que des lettres (a-z, sans accents), des chiffres, « _ » et « - ».";
-  }
-  if (!STARTS_WITH_ALPHANUMERIC.test(username)) {
-    return "Le nom d'utilisateur doit commencer par une lettre ou un chiffre.";
-  }
+  if (!ALLOWED_CHARS.test(username)) return "usernameChars";
+  if (!STARTS_WITH_ALPHANUMERIC.test(username)) return "usernameStart";
   return null;
 }
 

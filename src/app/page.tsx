@@ -1,11 +1,13 @@
+import { getMessages } from "@/i18n/server";
 import { CreateRoomForm, JoinRoomForm } from "./home-actions";
 
-export default function Home() {
+export default async function Home() {
+  const m = await getMessages();
   return (
     <main className="mx-auto flex w-full max-w-sm flex-col gap-8 px-4 py-10">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Typing Race</h1>
-        <p>Courses de dactylographie multijoueurs en temps réel.</p>
+        <h1 className="text-2xl font-semibold">{m.app.name}</h1>
+        <p>{m.app.tagline}</p>
       </div>
       <CreateRoomForm />
       <JoinRoomForm />

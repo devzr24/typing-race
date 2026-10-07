@@ -60,19 +60,19 @@ describe("joinRoom", () => {
 
   it("refuse un code mal formé", async () => {
     const result = await joinRoom(store, "AB0", bob);
-    expect(result).toEqual({ ok: false, error: expect.stringMatching(/Code invalide/) });
+    expect(result).toEqual({ ok: false, error: "roomCodeInvalid" });
   });
 
   it("refuse une salle inexistante", async () => {
     const result = await joinRoom(store, "ABCDEF", bob);
-    expect(result).toEqual({ ok: false, error: "Aucune salle ne correspond à ce code." });
+    expect(result).toEqual({ ok: false, error: "roomNotFound" });
   });
 
   it("refuse une salle qui n'est plus en attente", async () => {
     const code = await createRoom(store, alice);
     store.rooms.get(code)!.status = "EN_COURSE";
     const result = await joinRoom(store, code, bob);
-    expect(result).toEqual({ ok: false, error: expect.stringMatching(/n'accepte plus/) });
+    expect(result).toEqual({ ok: false, error: "roomNotWaiting" });
   });
 });
 

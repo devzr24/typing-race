@@ -8,15 +8,15 @@ describe("validatePassword", () => {
   });
 
   it("refuse un mot de passe vide", () => {
-    expect(validatePassword("")).toMatch(/obligatoire/);
+    expect(validatePassword("")).toBe("required");
   });
 
   it("refuse un mot de passe trop court", () => {
-    expect(validatePassword("1234567")).toMatch(/au moins 8/);
+    expect(validatePassword("1234567")).toBe("passwordTooShort");
   });
 
   it("refuse un mot de passe trop long", () => {
-    expect(validatePassword("x".repeat(129))).toMatch(/dépasser 128/);
+    expect(validatePassword("x".repeat(129))).toBe("passwordTooLong");
   });
 });
 

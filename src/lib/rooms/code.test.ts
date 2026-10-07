@@ -51,13 +51,12 @@ describe("normalizeRoomCode / validateRoomCode", () => {
   });
 
   it("refuse un code vide", () => {
-    expect(validateRoomCode("")).toMatch(/Entre le code/);
+    expect(validateRoomCode("")).toBe("roomCodeRequired");
   });
 
   it("refuse une mauvaise longueur ou un caractère ambigu", () => {
-    expect(validateRoomCode("ABCDE")).toMatch(/Code invalide/);
-    expect(validateRoomCode("ABCDEFG")).toMatch(/Code invalide/);
-    expect(validateRoomCode("ABCDE0")).toMatch(/Code invalide/);
-    expect(validateRoomCode("ABCDEI")).toMatch(/Code invalide/);
+    for (const code of ["ABCDE", "ABCDEFG", "ABCDE0", "ABCDEI"]) {
+      expect(validateRoomCode(code)).toBe("roomCodeInvalid");
+    }
   });
 });

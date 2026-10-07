@@ -3,13 +3,15 @@
 import { AuthError } from "next-auth";
 import { Prisma } from "@/generated/prisma/client";
 import { signIn, signOut } from "@/auth";
+import type { ErrorCode } from "@/i18n/messages";
 import { hashPassword, validatePassword } from "@/lib/auth/password";
 import { normalizeUsername, validateUsername } from "@/lib/auth/username";
 import { prisma } from "@/lib/prisma";
 
+/** Les erreurs sont des codes, traduits par l'interface dans la langue choisie. */
 export type FormState = {
-  error?: string;
-  fieldErrors?: Partial<Record<"username" | "password" | "confirm" | "pseudo", string>>;
+  error?: ErrorCode;
+  fieldErrors?: Partial<Record<"username" | "password" | "confirm" | "pseudo", ErrorCode>>;
   values?: { username?: string; pseudo?: string };
 };
 
@@ -32,17 +34,15 @@ export async function loginWithPassword(_prev: FormState, formData: FormData): P
   const values = { username };
 
   const fieldErrors: FormState["fieldErrors"] = {};
-  if (!username) fieldErrors.username = "Le nom d'utilisateur est obligatoire.";
-  if (!password) fieldErrors.password = "Le mot de passe est obligatoire.";
+  if (!username) fieldErrors.username = "required";
+  if (!password) fieldErrors.password = "required";
   if (fieldErrors.username || fieldErrors.password) return { fieldErrors, values };
 
   try {
     await signIn("credentials", { username, password, redirectTo: "/" });
   } catch (error) {
     // signIn lance une redirection en cas de succès : seule une AuthError est un échec.
-    if (error instanceof AuthError) {
-      return { error: "Nom d'utilisateur ou mot de passe incorrect.", values };
-    }
+    if (error instanceof AuthError) return { error: "invalidLogin", values };
     throw error;
   }
   return {};
@@ -59,7 +59,7 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   if (usernameError) fieldErrors.username = usernameError;
   const passwordError = validatePassword(password);
   if (passwordError) fieldErrors.password = passwordError;
-  else if (password !== confirm) fieldErrors.confirm = "Les mots de passe ne correspondent pas.";
+  else if (password !== confirm) fieldErrors.confirm = "passwordMismatch";
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors, values };
 
   try {
@@ -68,7 +68,7 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { fieldErrors: { username: "Ce nom d'utilisateur est déjà pris." }, values };
+      return { fieldErrors: { username: "usernameTaken" }, values };
     }
     throw error;
   }
@@ -83,19 +83,13 @@ export async function continueAsGuest(_prev: FormState, formData: FormData): Pro
   const values = { pseudo };
 
   // Pseudo facultatif : s'il est vide, un pseudo est généré (ex. invite-4821).
-  if (pseudo) {
-    const pseudoError = validateUsername(pseudo);
-    if (pseudoError) {
-      return { fieldErrors: { pseudo: pseudoError.replace("Le nom d'utilisateur", "Le pseudo") }, values };
-    }
-  }
+  const pseudoError = pseudo ? validateUsername(pseudo) : null;
+  if (pseudoError) return { fieldErrors: { pseudo: pseudoError }, values };
 
   try {
     await signIn("guest", { pseudo, redirectTo: "/" });
   } catch (error) {
-    if (error instanceof AuthError) {
-      return { error: "Impossible de continuer en invité. Réessaie.", values };
-    }
+    if (error instanceof AuthError) return { error: "guestFailed", values };
     throw error;
   }
   return {};

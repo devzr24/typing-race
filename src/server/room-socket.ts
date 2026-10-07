@@ -61,15 +61,12 @@ export function registerRoomHandlers(io: RealtimeServer): void {
       if (typeof ack !== "function") return;
       try {
         const code = normalizeRoomCode(String(payload?.code ?? ""));
-        if (validateRoomCode(code)) return ack({ ok: false, error: "Code de salle invalide." });
+        if (validateRoomCode(code)) return ack({ ok: false, error: "roomCodeInvalid" });
         const room = await roomStore.findRoom(code);
-        if (!room) return ack({ ok: false, error: "Cette salle n'existe plus." });
+        if (!room) return ack({ ok: false, error: "roomClosed" });
         const self = room.participants.find((p) => p.key === data.identity.key);
         if (!self) {
-          return ack({
-            ok: false,
-            error: "Tu ne fais pas partie de cette salle. Rejoins-la avec son code depuis l'accueil.",
-          });
+          return ack({ ok: false, error: "notInRoom" });
         }
         cancelDeparture(code, data.identity.key);
         data.watched.add(code);
@@ -77,7 +74,7 @@ export function registerRoomHandlers(io: RealtimeServer): void {
         ack({ ok: true, room: toPublicRoom(room), selfId: self.id });
       } catch (error) {
         console.error("> room:watch :", error);
-        ack({ ok: false, error: "Erreur du serveur. Recharge la page." });
+        ack({ ok: false, error: "serverError" });
       }
     });
 

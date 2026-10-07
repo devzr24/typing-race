@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Rendu dynamique classique : la langue et le thème viennent de cookies (ADR 0009).
   // Photos de profil GitHub et Discord affichées dans l'en-tête.
   images: {
     remotePatterns: [

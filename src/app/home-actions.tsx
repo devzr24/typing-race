@@ -2,53 +2,58 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { buttonClass, FormError, FormField } from "@/components/form-field";
+import { buttonClass, FormError, FormField, inputClass } from "@/components/form-field";
+import { useI18n } from "@/i18n/client";
+import { errorText } from "@/i18n/format";
 import { createRoomAction, joinRoomAction, type RoomFormState } from "@/lib/rooms/actions";
 import { ROOM_CODE_LENGTH } from "@/lib/rooms/code";
 
 const initialState: RoomFormState = {};
 
 function LoginHint({ state }: { state: RoomFormState }) {
-  if (!state.needsLogin) return null;
+  const { m } = useI18n();
+  if (state.error !== "loginRequired") return null;
   return (
     <Link href="/login" className="text-sm underline">
-      Aller à la page de connexion
+      {m.home.goToLogin}
     </Link>
   );
 }
 
 export function CreateRoomForm() {
+  const { m } = useI18n();
   const [state, action, pending] = useActionState(createRoomAction, initialState);
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormError message={state.error} />
+      <FormError message={state.error && errorText(m, state.error)} />
       <LoginHint state={state} />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Création…" : "Créer une salle"}
+        {pending ? m.home.creating : m.home.createRoom}
       </button>
     </form>
   );
 }
 
 export function JoinRoomForm() {
+  const { m } = useI18n();
   const [state, action, pending] = useActionState(joinRoomAction, initialState);
   return (
     <form action={action} className="flex flex-col gap-3" noValidate>
-      <FormError message={state.error} />
+      <FormError message={state.error && errorText(m, state.error)} />
       <LoginHint state={state} />
       <FormField
         id="code"
-        label="Rejoindre avec un code"
+        label={m.home.joinLabel}
         autoComplete="off"
         autoCapitalize="characters"
         spellCheck={false}
         maxLength={ROOM_CODE_LENGTH + 2}
-        placeholder="Ex. : K7MPQ2"
-        className="rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono uppercase tracking-widest aria-invalid:border-red-600 dark:border-zinc-700"
+        placeholder={m.home.joinPlaceholder}
+        className={`${inputClass} font-mono uppercase tracking-widest`}
         defaultValue={state.values?.code}
       />
       <button type="submit" className={buttonClass} disabled={pending}>
-        {pending ? "Connexion à la salle…" : "Rejoindre"}
+        {pending ? m.home.joining : m.home.join}
       </button>
     </form>
   );

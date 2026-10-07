@@ -1,3 +1,5 @@
+import type { ErrorCode } from "@/i18n/messages";
+
 // Sans 0/O, 1/I/L : aucun caractère qu'on confond en le lisant au tableau ou en le dictant.
 export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ROOM_CODE_LENGTH = 6;
@@ -9,11 +11,9 @@ export function normalizeRoomCode(input: string): string {
   return input.toUpperCase().replace(/[\s-]+/g, "");
 }
 
-/** Retourne un message d'erreur en français, ou null si le code (déjà normalisé) est valide. */
-export function validateRoomCode(code: string): string | null {
-  if (code.length === 0) return "Entre le code de la salle.";
-  if (!ROOM_CODE_PATTERN.test(code)) {
-    return `Code invalide : il fait ${ROOM_CODE_LENGTH} caractères, lettres et chiffres, sans 0, O, 1, I ni L.`;
-  }
+/** Retourne le code d'erreur (traduit par l'interface), ou null si le code (déjà normalisé) est valide. */
+export function validateRoomCode(code: string): ErrorCode | null {
+  if (code.length === 0) return "roomCodeRequired";
+  if (!ROOM_CODE_PATTERN.test(code)) return "roomCodeInvalid";
   return null;
 }
