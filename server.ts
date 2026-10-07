@@ -3,6 +3,7 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { getPort } from "./src/server/config";
 import { assertProductionEnv } from "./src/server/env";
+import { runMigrations, shouldMigrateOnStart } from "./src/server/migrate";
 import type { RealtimeServer } from "./src/server/realtime";
 
 const port = getPort();
@@ -19,6 +20,8 @@ const handle = app.getRequestHandler();
 app.prepare().then(async () => {
   // Arrêt immédiat et explicite si une variable obligatoire manque en production.
   assertProductionEnv();
+  // Sur Railway : base à jour avant d'accepter la moindre requête (ADR 0008).
+  if (shouldMigrateOnStart()) runMigrations();
 
   httpServer.on("request", (req, res) => {
     handle(req, res);

@@ -58,9 +58,10 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 
 Production : https://typing-race-production-4a76.up.railway.app (redéployé à chaque push sur `master`).
 
-Configuré dans `railway.json` : build `npm run build`, puis avant chaque mise en ligne
-`npm run db:migrate:deploy` (pre-deploy), puis `npm start`. Node fixé par `engines` (24.x).
-Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
+Configuré dans `railway.json` : build `npm run build`, puis `npm start`. Au démarrage sur
+Railway, `server.ts` applique les migrations (`prisma migrate deploy`) avant d'écouter (ADR 0008).
+Healthcheck : `/api/health` (version, accès base, état des migrations).
+Node fixé par `engines` (24.x). Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
 
 Au démarrage en production, `server.ts` s'arrête (code 1, message explicite) si `DATABASE_URL`
 ou `AUTH_SECRET` manque, ainsi que `AUTH_URL` sur Railway (`src/server/env.ts`).
