@@ -49,6 +49,13 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
   (`bg-background`, `text-foreground`, `text-muted`, `border-border`, `bg-surface`, `text-danger`).
 - Ne pas inventer de choix visuels : palette, polices et nom du site viendront de la direction artistique.
 
+## Documentation
+
+- `docs/matrice-des-exigences.md` : mettre à jour le statut, les fichiers et les tests de chaque
+  exigence touchée, à chaque checkpoint.
+- `docs/architecture/` : modèle de données (Mermaid `erDiagram`) et machine à états de la salle
+  (`stateDiagram`) ; les mettre à jour avec toute migration ou nouvelle transition.
+
 ## ADR
 
 - Un ADR **accepté ne se modifie jamais**. Si une décision change, on écrit un **nouvel ADR**
