@@ -10,7 +10,8 @@ const dev = process.env.NODE_ENV !== "production";
 
 // Un seul serveur HTTP : Next.js gère les pages, Socket.IO gère /socket.io/.
 const httpServer = createServer();
-const app = next({ dev, hostname, port, httpServer });
+// hostname n'est pas transmis à Next : il s'en servirait pour construire ses URL (http://0.0.0.0…).
+const app = next({ dev, port, httpServer });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
