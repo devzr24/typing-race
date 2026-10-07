@@ -1,5 +1,4 @@
-// Schéma Prisma. Les modèles (utilisateurs, salles, courses…) seront ajoutés
-// dans les checkpoints qui les demandent.
+// Schéma Prisma. Les modèles sont ajoutés au fil des checkpoints qui les demandent.
 
 generator client {
   provider = "prisma-client"
@@ -8,4 +7,42 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// Utilisateur inscrit (GitHub, Discord ou nom d'utilisateur + mot de passe).
+// Aucun courriel n'est stocké (voir ADR 0004). Les invités ne sont pas en base.
+model User {
+  id           String    @id @default(cuid())
+  /// Unique, en minuscules. Suffixe numérique en cas de conflit OAuth (ADR 0005).
+  username     String    @unique
+  /// Haché avec scrypt ; null pour les comptes GitHub/Discord.
+  passwordHash String?
+  /// Nom d'affichage fourni par GitHub/Discord.
+  name         String?
+  /// Photo de profil fournie par GitHub/Discord.
+  image        String?
+  accounts     Account[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// Compte GitHub/Discord relié à un utilisateur (format attendu par @auth/prisma-adapter).
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
