@@ -15,6 +15,8 @@ Héberger l'application et la base PostgreSQL sur **Railway**. Railway construit
 (`npm run build`) puis le lance (`npm start`) à chaque push sur la branche principale,
 fournit le port via `PORT` et la base via `DATABASE_URL`.
 
+URL de production : https://typing-race-production-4a76.up.railway.app
+
 ## Conséquences
 
 - HTTPS automatique et déploiement continu sans configuration supplémentaire.

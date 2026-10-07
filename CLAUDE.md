@@ -41,6 +41,8 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 
 ## Déploiement (Railway)
 
+Production : https://typing-race-production-4a76.up.railway.app (redéployé à chaque push sur `master`).
+
 Configuré dans `railway.json` : build `npm run build`, puis avant chaque mise en ligne
 `npm run db:migrate:deploy` (pre-deploy), puis `npm start`. Node fixé par `engines` (24.x).
 Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
@@ -48,3 +50,13 @@ Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
 ## Variables d'environnement
 
 Voir `.env.example`. `.env` n'est jamais commité.
+
+## Commits
+
+- Format **Conventional Commits** : `type(portée): description courte en français`.
+- Types : `feat`, `fix`, `docs`, `test`, `ci`, `chore`, `refactor`, `style`.
+- Portées : `auth`, `lobby`, `room`, `db`, `deploy`, `i18n`, `theme`, `ui`, `ci`, `adr`.
+- Un commit par étape logique ; première ligne de moins de 72 caractères.
+- Toujours montrer `git status` avant de commiter.
+- Ne jamais commiter `.env`.
+- Ne pousser que sur demande explicite.
