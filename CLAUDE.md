@@ -62,6 +62,9 @@ Configuré dans `railway.json` : build `npm run build`, puis avant chaque mise e
 `npm run db:migrate:deploy` (pre-deploy), puis `npm start`. Node fixé par `engines` (24.x).
 Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
 
+Au démarrage en production, `server.ts` s'arrête (code 1, message explicite) si `DATABASE_URL`
+ou `AUTH_SECRET` manque, ainsi que `AUTH_URL` sur Railway (`src/server/env.ts`).
+
 `AUTH_URL` (production seulement) : définie dans Railway avec l'URL de production. Derrière le
 proxy Railway, l'application reçoit `localhost:8080` comme hôte ; sans `AUTH_URL`, Auth.js
 enverrait cette adresse comme retour OAuth. Ne pas la définir en local.

@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { getPort } from "./src/server/config";
+import { assertProductionEnv } from "./src/server/env";
 import type { RealtimeServer } from "./src/server/realtime";
 
 const port = getPort();
@@ -16,6 +17,9 @@ const app = next({ dev, port, httpServer });
 const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {
+  // Arrêt immédiat et explicite si une variable obligatoire manque en production.
+  assertProductionEnv();
+
   httpServer.on("request", (req, res) => {
     handle(req, res);
   });
@@ -35,4 +39,8 @@ app.prepare().then(async () => {
       `> Serveur prêt sur http://localhost:${port} (${dev ? "développement" : "production"})`,
     );
   });
+}).catch((error: unknown) => {
+  // Code de sortie 1 : Railway marque le déploiement en échec au lieu d'un arrêt « normal ».
+  console.error("> Démarrage impossible :", error instanceof Error ? error.message : error);
+  process.exit(1);
 });
