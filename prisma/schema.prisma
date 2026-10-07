@@ -1,0 +1,11 @@
+// Schéma Prisma. Les modèles (utilisateurs, salles, courses…) seront ajoutés
+// dans les checkpoints qui les demandent.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
