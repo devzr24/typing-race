@@ -22,6 +22,7 @@ model User {
   /// Photo de profil fournie par GitHub/Discord.
   image        String?
   accounts     Account[]
+  roomEntries  RoomParticipant[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -45,4 +46,46 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+// État d'une salle. Seul EN_ATTENTE est utilisé pour l'instant ; les autres préparent
+// la future machine à états de la course.
+enum RoomStatus {
+  EN_ATTENTE
+  EN_COURSE
+  TERMINEE
+}
+
+// Salle rejointe par code (ADR 0006). Supprimée quand le dernier participant part.
+model Room {
+  id           String            @id @default(cuid())
+  /// 6 caractères sans 0/O/1/I/L, ex. « K7MPQ2 ».
+  code         String            @unique
+  status       RoomStatus        @default(EN_ATTENTE)
+  /// Identifiant de session de l'hôte (id utilisateur ou « guest-<uuid> »).
+  hostKey      String
+  createdAt    DateTime          @default(now())
+  participants RoomParticipant[]
+}
+
+// Présence d'un utilisateur ou d'un invité dans une salle.
+model RoomParticipant {
+  id          String   @id @default(cuid())
+  roomId      String
+  /// Identifiant de session : id utilisateur ou « guest-<uuid> ».
+  key         String
+  /// Renseigné pour un utilisateur inscrit, null pour un invité.
+  userId      String?
+  /// Nom et photo copiés depuis la session au moment de l'arrivée.
+  displayName String
+  image       String?
+  isGuest     Boolean
+  /// Ordre d'arrivée : sert au transfert d'hôte.
+  joinedAt    DateTime @default(now())
+
+  room Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, key])
+  @@index([roomId, joinedAt])
 }
