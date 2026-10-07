@@ -31,6 +31,11 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `src/auth.ts` — configuration Auth.js (GitHub, Discord, nom d'utilisateur + mot de passe, invité).
 - `src/lib/auth/` — règles de validation, hachage scrypt, actions serveur des formulaires.
 - `src/app/login`, `src/app/register` — pages de connexion et d'inscription.
+- `src/lib/rooms/` — salles : codes, service (créer/rejoindre/quitter/transfert d'hôte), stockage
+  Prisma et en mémoire (tests), actions serveur, événements Socket.IO typés.
+- `src/server/` — côté Socket.IO : identité tirée du cookie Auth.js, abonnements aux salles,
+  départs différés ; `realtime.ts` partage l'instance Socket.IO avec les actions de Next.
+- `src/app/room/[code]` — page de salle (liste des participants en direct).
 - `docs/adr/` — décisions d'architecture (ADR). Toute nouvelle décision structurante = nouvel ADR.
 
 ## ADR
