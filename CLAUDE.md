@@ -28,7 +28,17 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `src/server/` — code exécuté côté serveur Node (config, plus tard : logique Socket.IO).
 - `src/lib/prisma.ts` — instance unique de Prisma Client.
 - `prisma/schema.prisma` — schéma de la base ; client généré dans `src/generated/prisma` (ignoré par Git).
+- `src/auth.ts` — configuration Auth.js (GitHub, Discord, nom d'utilisateur + mot de passe, invité).
+- `src/lib/auth/` — règles de validation, hachage scrypt, actions serveur des formulaires.
+- `src/app/login`, `src/app/register` — pages de connexion et d'inscription.
 - `docs/adr/` — décisions d'architecture (ADR). Toute nouvelle décision structurante = nouvel ADR.
+
+## ADR
+
+- Un ADR **accepté ne se modifie jamais**. Si une décision change, on écrit un **nouvel ADR**
+  qui remplace l'ancien ; le nouvel ADR l'indique dans son en-tête (« Remplace : ADR XXXX »).
+- Numérotation continue (`0001`, `0002`…), format court : contexte, décision, conséquences,
+  alternatives écartées.
 
 ## Commandes
 
@@ -49,7 +59,8 @@ Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
 
 ## Variables d'environnement
 
-Voir `.env.example`. `.env` n'est jamais commité.
+Voir `.env.example`. `.env` n'est jamais commité. Aucun secret dans le code.
+En local, le serveur doit tourner sur le port 3000 : c'est l'adresse de retour OAuth enregistrée.
 
 ## Commits
 
