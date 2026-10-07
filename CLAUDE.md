@@ -35,8 +35,15 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `npm run dev` — serveur de développement (`tsx server.ts`).
 - `npm run build` — `prisma generate` puis `next build`.
 - `npm start` — production (`NODE_ENV=production tsx server.ts`), utilisé par Railway.
+- `npm run db:migrate:deploy` — applique les migrations (`prisma migrate deploy`).
 - `npm run lint` — ESLint.
 - `npm test` — Vitest.
+
+## Déploiement (Railway)
+
+Configuré dans `railway.json` : build `npm run build`, puis avant chaque mise en ligne
+`npm run db:migrate:deploy` (pre-deploy), puis `npm start`. Node fixé par `engines` (24.x).
+Le serveur écoute sur `0.0.0.0` et le `PORT` fourni par Railway.
 
 ## Variables d'environnement
 

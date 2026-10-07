@@ -4,11 +4,13 @@ import { Server as SocketIOServer } from "socket.io";
 import { getPort } from "./src/server/config";
 
 const port = getPort();
+// 0.0.0.0 : écoute sur toutes les interfaces, obligatoire dans le conteneur Railway.
+const hostname = "0.0.0.0";
 const dev = process.env.NODE_ENV !== "production";
 
 // Un seul serveur HTTP : Next.js gère les pages, Socket.IO gère /socket.io/.
 const httpServer = createServer();
-const app = next({ dev, port, httpServer });
+const app = next({ dev, hostname, port, httpServer });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
@@ -27,7 +29,7 @@ app.prepare().then(() => {
     });
   });
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, hostname, () => {
     console.log(
       `> Serveur prêt sur http://localhost:${port} (${dev ? "développement" : "production"})`,
     );
