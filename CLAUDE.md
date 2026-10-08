@@ -40,6 +40,7 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
   `errorText()`, lecture des cookies `lang`/`theme`.
 - `src/app/globals.css` — SEUL endroit des couleurs, polices et effets visuels (direction artistique Keyclue, ADR 0010).
 - `src/components/effects.tsx`, `clue-network.tsx` — intro, slogan tapé, réseau d'indices, boutons Son / Effets.
+- `src/components/motion-effects.tsx` — halo du curseur, boutons magnétiques, code décodé ; `src/app/template.tsx` — transition de page.
 - `docs/adr/` — décisions d'architecture (ADR). Toute nouvelle décision structurante = nouvel ADR.
 
 ## Interface
@@ -53,6 +54,8 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - Texte sur fond `neon` : couleur `night`. Boutons : `primaryButtonClass` / `heroButtonClass` / `buttonClass`.
 - Ne pas inventer de choix visuels : la direction artistique est celle de l'utilisateur ; ne rien ajouter sans sa demande.
 - Tout effet animé passe par le bouton « Effets » (classe `fx-off`) et respecte `prefers-reduced-motion`.
+- Animations (ADR 0011) : `motion` seulement pour les cartes de joueurs et le halo, le reste en CSS ;
+  n'animer que `transform`/`opacity` ; vérifier le budget (≥ 50 images/s, processeur ×4) avant de fusionner.
 
 ## Documentation
 
