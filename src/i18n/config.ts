@@ -10,6 +10,11 @@ export const THEMES = ["light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];
 export const THEME_COOKIE = "theme";
 
+/** « off » si l'utilisateur a désactivé les effets (activés par défaut). */
+export const EFFECTS_COOKIE = "fx";
+/** « on » si l'utilisateur a activé le son (coupé par défaut). */
+export const SOUND_COOKIE = "sound";
+
 /** Un an : le choix est retenu d'une visite à l'autre. */
 export const PREFERENCE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 

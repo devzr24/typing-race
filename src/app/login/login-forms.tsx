@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useActionState } from "react";
-import { buttonClass, FormError, FormField } from "@/components/form-field";
+import { FormError, FormField, primaryButtonClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
 import type { ErrorCode } from "@/i18n/messages";
@@ -33,7 +33,7 @@ export function PasswordLoginForm() {
         required
         error={state.fieldErrors?.password && errorText(m, state.fieldErrors.password)}
       />
-      <button type="submit" className={buttonClass} disabled={pending}>
+      <button type="submit" className={primaryButtonClass} disabled={pending}>
         {pending ? m.login.submitting : m.login.submit}
       </button>
     </form>
@@ -55,7 +55,7 @@ export function GuestForm() {
         defaultValue={state.values?.pseudo}
         error={state.fieldErrors?.pseudo && errorText(m, state.fieldErrors.pseudo)}
       />
-      <button type="submit" className={buttonClass} disabled={pending}>
+      <button type="submit" className={primaryButtonClass} disabled={pending}>
         {pending ? m.login.guestSubmitting : m.login.guestSubmit}
       </button>
     </form>

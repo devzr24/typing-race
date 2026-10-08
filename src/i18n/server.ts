@@ -1,5 +1,15 @@
 import { cookies } from "next/headers";
-import { DEFAULT_LOCALE, isLocale, isTheme, LOCALE_COOKIE, THEME_COOKIE, type Locale, type Theme } from "./config";
+import {
+  DEFAULT_LOCALE,
+  EFFECTS_COOKIE,
+  isLocale,
+  isTheme,
+  LOCALE_COOKIE,
+  SOUND_COOKIE,
+  THEME_COOKIE,
+  type Locale,
+  type Theme,
+} from "./config";
 import { messages, type Messages } from "./messages";
 
 /** Langue mémorisée dans le cookie, français par défaut. */
@@ -16,4 +26,13 @@ export async function getMessages(): Promise<Messages> {
 export async function getTheme(): Promise<Theme | null> {
   const value = (await cookies()).get(THEME_COOKIE)?.value;
   return isTheme(value) ? value : null;
+}
+
+/** Préférences Son (coupé par défaut) et Effets (activés par défaut). */
+export async function getFeedbackPreferences(): Promise<{ sound: boolean; effects: boolean }> {
+  const store = await cookies();
+  return {
+    sound: store.get(SOUND_COOKIE)?.value === "on",
+    effects: store.get(EFFECTS_COOKIE)?.value !== "off",
+  };
 }

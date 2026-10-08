@@ -1,22 +1,32 @@
 @import "tailwindcss";
 
 /*
- * SEUL endroit où sont définies les couleurs et les polices du site.
- * Valeurs NEUTRES ET PROVISOIRES : elles seront remplacées par la direction artistique.
- * Chaque couleur a sa valeur claire et foncée : light-dark(clair, foncé).
- * Utilisation dans les composants : bg-background, text-foreground, text-muted,
- * border-border, bg-surface, text-danger, border-danger, font-sans, font-mono.
+ * SEUL endroit où sont définies les couleurs, les polices et les effets (direction artistique Keyclue).
+ * Chaque couleur : light-dark(valeur thème pâle, valeur thème foncé).
+ * Les polices sont chargées par next/font dans src/app/layout.tsx, qui fournit les variables
+ * --font-monoton, --font-righteous, --font-nunito et --font-jetbrains-mono utilisées ici.
  */
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --font-logo: var(--font-monoton), system-ui, sans-serif; /* nom « Keyclue », intro */
+  --font-display: var(--font-righteous), system-ui, sans-serif; /* titres */
+  --font-sans: var(--font-nunito), system-ui, sans-serif; /* texte */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace; /* code de salle, texte tapé */
 
-  --color-background: light-dark(#ffffff, #121212);
-  --color-foreground: light-dark(#1a1a1a, #ededed);
-  --color-muted: light-dark(#666666, #a3a3a3);
-  --color-border: light-dark(#d4d4d4, #3a3a3a);
-  --color-surface: light-dark(#f2f2f2, #1f1f1f);
-  --color-danger: light-dark(#b42318, #f97066);
+  --color-neon: light-dark(#d81b60, #fc2574); /* signature : boutons principaux */
+  --color-cyan: light-dark(#0891a6, #0ee8f7); /* indice : bonus, progression, curseur */
+  --color-alert: light-dark(#c8102e, #fb0242); /* erreur */
+  --color-ink: light-dark(#0e1223, #e6eef7); /* texte */
+  --color-night: light-dark(#eef3f8, #0e1223); /* fond de page */
+  --color-card: light-dark(#ffffff, #113256); /* cartes */
+  --color-steel: light-dark(#c9dbea, #1b5482); /* lettre courante, avatars, route */
+  --color-mist: light-dark(#7a6f80, #9a8fa3); /* texte secondaire */
+  /* Bordures : mist en thème pâle (contraste ≥ 3:1 sur le fond), steel en thème foncé. */
+  --color-line: light-dark(#7a6f80, #1b5482);
+}
+
+/* Légère lueur néon du bouton principal. */
+@utility glow-neon {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--color-neon) 55%, transparent);
 }
 
 /*
@@ -35,7 +45,217 @@
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--color-night);
+  color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+/* ─── Écran d'intro : enseigne néon qui grésille, puis fondu (~1 s) ─────────────────────── */
+/* Animation 100 % CSS : même si le JavaScript tarde, l'écran disparaît seul et ne bloque rien. */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--color-night);
+  animation: intro-out 0.25s ease-in 0.8s forwards;
+}
+.intro-word {
+  font-family: var(--font-logo);
+  font-size: clamp(2.5rem, 13vw, 7rem);
+  text-transform: uppercase;
+  color: var(--color-neon);
+  text-shadow:
+    0 0 8px var(--color-neon),
+    0 0 24px var(--color-neon);
+  animation: neon-flicker 0.8s steps(1, end) both;
+}
+@keyframes neon-flicker {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  20% { opacity: 0.15; }
+  30% { opacity: 1; }
+  40% { opacity: 0.3; }
+  52% { opacity: 1; }
+  100% { opacity: 1; }
+}
+@keyframes intro-out {
+  to { opacity: 0; visibility: hidden; }
+}
+
+/* ─── Slogan qui se tape ───────────────────────────────────────────────────────────────── */
+.tagline-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 0.1em;
+  vertical-align: text-bottom;
+  background: var(--color-cyan);
+  animation: cursor-blink 1s steps(1, end) infinite;
+}
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+/* Avant que le JavaScript prenne le relais, le slogan est masqué ; repli : affiché après 3 s. */
+html.type-tagline .tagline-visible {
+  visibility: hidden;
+  animation: reveal 0s linear 3s forwards;
+}
+@keyframes reveal {
+  to { visibility: visible; }
+}
+
+/* ─── Route néon en arrière-plan ───────────────────────────────────────────────────────── */
+/* Placée APRÈS le contenu (jamais sous le texte) ; en bas de l'écran quand la page est courte. */
+.road {
+  position: relative;
+  height: 28vh;
+  min-height: 120px;
+  overflow: hidden;
+  perspective: 320px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.road::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 1;
+  background: var(--color-neon);
+  box-shadow: 0 0 12px var(--color-neon);
+}
+/* Plan incliné en perspective (statique, masqué en fondu vers l'horizon). */
+.road-grid {
+  position: absolute;
+  inset: 0 -50% -100%;
+  overflow: hidden;
+  transform-origin: top center;
+  transform: rotateX(68deg);
+  mask-image: linear-gradient(to bottom, transparent, black 25%);
+}
+/* Lignes de la route : seul un transform est animé (pris en charge par la carte graphique). */
+.road-lines {
+  position: absolute;
+  inset: -64px 0 0;
+  background-image:
+    linear-gradient(var(--color-steel) 2px, transparent 2px),
+    linear-gradient(90deg, var(--color-steel) 2px, transparent 2px);
+  background-size: 64px 64px;
+  will-change: transform;
+  animation: road-move 3s linear infinite;
+}
+@keyframes road-move {
+  from { transform: translateY(0); }
+  to { transform: translateY(64px); }
+}
+/* Plus légère en thème pâle. */
+:root.light .road {
+  opacity: 0.45;
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) .road {
+    opacity: 0.45;
+  }
+}
+
+/* ─── Réseau d'indices (canvas) : au-dessus de la route, derrière le contenu ─────────────── */
+.clue-network {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.55;
+  /* Lisibilité : presque effacé dans la colonne centrale où se trouve le texte. */
+  mask-image: linear-gradient(
+    to right,
+    black 0,
+    black calc(50% - 380px),
+    rgb(0 0 0 / 0.12) calc(50% - 300px),
+    rgb(0 0 0 / 0.12) calc(50% + 300px),
+    black calc(50% + 380px)
+  );
+}
+/* Plus discret en thème pâle. */
+:root.light .clue-network {
+  opacity: 0.35;
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) .clue-network {
+    opacity: 0.35;
+  }
+}
+/* Le contenu passe au-dessus du réseau d'indices. */
+.above-effects {
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Icônes de l'en-tête : cadre arrondi, légère lueur cyan au survol ─────────────────── */
+.icon-frame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.75rem;
+  color: var(--color-ink);
+  background: transparent;
+  transition: box-shadow 0.15s ease;
+}
+.icon-frame:hover,
+.icon-frame:focus-within {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-cyan) 55%, transparent);
+}
+.icon-frame:disabled {
+  opacity: 0.5;
+}
+.icon-frame select {
+  background: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.icon-frame select option {
+  background: var(--color-night);
+  color: var(--color-ink);
+}
+
+/* ─── Effets désactivés (bouton « Effets » ou préférence système) ──────────────────────── */
+html.fx-off .intro,
+html.intro-skip .intro,
+html.fx-off .road,
+html.fx-off .tagline-cursor,
+html.fx-off .clue-network {
+  display: none;
+}
+html.fx-off .glow-neon,
+html.fx-off .icon-frame:hover,
+html.fx-off .icon-frame:focus-within {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro,
+  .road,
+  .tagline-cursor,
+  .clue-network {
+    display: none;
+  }
+  .glow-neon,
+  .icon-frame:hover,
+  .icon-frame:focus-within {
+    box-shadow: none;
+  }
 }
