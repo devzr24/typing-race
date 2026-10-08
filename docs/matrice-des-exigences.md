@@ -60,9 +60,9 @@ Mise à jour : 2026-10-07.
 
 | ID | Exigence | Prio. | Statut | Fichiers | Tests |
 |---|---|---|---|---|---|
-| UI-01 | Bilingue, thèmes, responsive | E | partiel : FR/EN et thèmes faits ; mise en page responsive simple, pas encore vérifiée sur mobile | `src/i18n/`, `src/components/preferences.tsx`, `src/app/globals.css` | `src/i18n/messages.test.ts` ; `e2e/room.spec.ts` (langue et thème) |
-| UI-02 | Direction artistique | E | prévu (jetons de couleur/police prêts dans `globals.css`) | `src/app/globals.css` | — |
-| UI-03 | Nom et logo réalisés sans IA | E | prévu (nom provisoire dans `src/i18n/messages/`) | — | — |
+| UI-01 | Bilingue, thèmes, responsive | E | fait : FR/EN, thèmes, vérifié sur téléphone (captures Playwright, aucun débordement) | `src/i18n/`, `src/components/preferences.tsx`, `src/app/globals.css` | `src/i18n/messages.test.ts` ; `e2e/room.spec.ts` (langue et thème) |
+| UI-02 | Direction artistique | E | fait : palette, polices et effets Keyclue ([ADR 0010](adr/0010-direction-artistique-keyclue.md)) | `src/app/globals.css`, `src/components/effects.tsx`, `src/components/clue-network.tsx` | `e2e/room.spec.ts` (parcours complets avec la DA) |
+| UI-03 | Nom et logo réalisés sans IA | E | partiel : nom « Keyclue » choisi par l'équipe ; logo prévu | `src/i18n/messages/` | — |
 | UI-04 | Mode daltonien | F | prévu | — | — |
 
 ## Technique
