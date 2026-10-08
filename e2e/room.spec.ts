@@ -20,7 +20,11 @@ test("accueil → continuer en invité → créer une salle → le code s'affich
   await continueAsGuest(page);
   const code = await createRoom(page);
 
-  await expect(page.getByText(code, { exact: true })).toBeVisible();
+  // Le code visible est animé (décodage) ; on attend qu'il affiche le code exact.
+  // (Un second exemplaire, réservé aux lecteurs d'écran, contient toujours le code.)
+  const visibleCode = page.locator('span[aria-hidden="true"]', { hasText: new RegExp(`^${code}$`) });
+  await expect(visibleCode).toBeVisible();
+  await expect(page.getByText(code, { exact: true }).first()).toBeAttached();
   await expect(page.getByRole("button", { name: "Copier" })).toBeVisible();
   await expect(page.getByText("En direct")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Participants (1)" })).toBeVisible();
