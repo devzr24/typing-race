@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { buttonClass, FormError, FormField } from "@/components/form-field";
+import { FormError, FormField, primaryButtonClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
 import { register, type FormState } from "@/lib/auth/actions";
@@ -47,7 +47,7 @@ export function RegisterForm() {
         required
         error={fieldError("confirm")}
       />
-      <button type="submit" className={buttonClass} disabled={pending}>
+      <button type="submit" className={primaryButtonClass} disabled={pending}>
         {pending ? m.register.submitting : m.register.submit}
       </button>
     </form>

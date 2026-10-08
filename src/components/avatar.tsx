@@ -6,7 +6,7 @@ export function Avatar({ name, image }: { name: string; image: string | null | u
   return (
     <span
       aria-hidden
-      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface text-sm font-medium uppercase"
+      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-steel text-sm font-medium uppercase"
     >
       {name.charAt(0)}
     </span>

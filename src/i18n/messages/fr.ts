@@ -3,8 +3,8 @@
 
 export const fr = {
   app: {
-    // Nom provisoire : le nom définitif viendra de la direction artistique.
-    name: "Typing Race",
+    // Nom du site (direction artistique).
+    name: "Keyclue",
     tagline: "Courses de dactylographie multijoueurs en temps réel.",
   },
   header: {
@@ -16,6 +16,13 @@ export const fr = {
     themeSystem: "Système",
     themeLight: "Clair",
     themeDark: "Foncé",
+    soundLabel: "Sons de l'interface",
+    soundOn: "Son : activé",
+    soundOff: "Son : coupé",
+    effectsLabel: "Animations et effets visuels",
+    effectsOn: "Effets : activés",
+    effectsOff: "Effets : désactivés",
+    effectsReduced: "Effets réduits par le réglage du système (mouvements réduits)",
   },
   home: {
     createRoom: "Créer une salle",

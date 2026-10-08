@@ -4,7 +4,7 @@ import type { Messages } from "./fr";
 
 export const en: Messages = {
   app: {
-    name: "Typing Race",
+    name: "Keyclue",
     tagline: "Real-time multiplayer typing races.",
   },
   header: {
@@ -16,6 +16,13 @@ export const en: Messages = {
     themeSystem: "System",
     themeLight: "Light",
     themeDark: "Dark",
+    soundLabel: "Interface sounds",
+    soundOn: "Sound: on",
+    soundOff: "Sound: off",
+    effectsLabel: "Animations and visual effects",
+    effectsOn: "Effects: on",
+    effectsOff: "Effects: off",
+    effectsReduced: "Effects reduced by your system setting (reduced motion)",
   },
   home: {
     createRoom: "Create a room",
