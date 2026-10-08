@@ -46,13 +46,14 @@ export function FormError({ message }: { message?: string }) {
 }
 
 /** Bouton secondaire : contour (couleur line). */
+// fx-ring(-hover) : bordure néon animée ; fx-magnetic : suit la souris et s'enfonce au clic.
 export const buttonClass =
-  "rounded border border-line px-4 py-2 font-medium hover:bg-card disabled:opacity-50";
+  "fx-ring fx-ring-hover fx-magnetic inline-flex items-center justify-center rounded border border-line px-4 py-2 font-medium hover:bg-card disabled:opacity-50";
 
 /** Bouton principal (signature) : fond neon, texte night (le blanc manque de contraste en foncé). */
 export const primaryButtonClass =
   // sfx-primary : repère pour le son au survol (src/components/effects.tsx).
-  "sfx-primary rounded border border-neon bg-neon px-4 py-2 font-semibold text-night hover:opacity-90 disabled:opacity-50";
+  "sfx-primary fx-ring fx-magnetic inline-flex items-center justify-center rounded border border-neon bg-neon px-4 py-2 font-semibold text-night hover:opacity-90 disabled:opacity-50";
 
 /** Gros bouton principal, avec une légère lueur néon. */
 export const heroButtonClass = `${primaryButtonClass} glow-neon py-3 text-lg`;

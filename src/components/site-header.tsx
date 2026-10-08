@@ -16,7 +16,10 @@ export async function SiteHeader({ theme }: { theme: Theme | null }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
       <Link href="/" className="font-logo text-2xl">
-        {m.app.name}
+        {/* data-text : copies décalées de l'effet glitch au survol (globals.css). */}
+        <span className="logo-neon" data-text={m.app.name}>
+          {m.app.name}
+        </span>
       </Link>
       <div className="flex flex-wrap items-center gap-2">
         <LanguageSelect />
