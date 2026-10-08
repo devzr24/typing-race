@@ -175,15 +175,7 @@ html.type-tagline .tagline-visible {
   height: 100%;
   pointer-events: none;
   opacity: 0.55;
-  /* Lisibilité : presque effacé dans la colonne centrale où se trouve le texte. */
-  mask-image: linear-gradient(
-    to right,
-    black 0,
-    black calc(50% - 380px),
-    rgb(0 0 0 / 0.12) calc(50% - 300px),
-    rgb(0 0 0 / 0.12) calc(50% + 300px),
-    black calc(50% + 380px)
-  );
+  /* La colonne centrale est presque effacée dans le canvas lui-même (clue-network.tsx). */
 }
 /* Plus discret en thème pâle. */
 :root.light .clue-network {
@@ -233,12 +225,172 @@ html.type-tagline .tagline-visible {
   color: var(--color-ink);
 }
 
+/* ─── Titre KEYCLUE : enseigne qui vacille de temps en temps, glitch au survol ───────────── */
+.logo-neon {
+  position: relative;
+  display: inline-block;
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--color-neon) 70%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-neon) 40%, transparent);
+  animation: logo-flicker 7s steps(1, end) infinite;
+}
+@keyframes logo-flicker {
+  0%, 100% { opacity: 1; }
+  61% { opacity: 0.55; }
+  62% { opacity: 1; }
+  63.5% { opacity: 0.7; }
+  64.5% { opacity: 1; }
+  92% { opacity: 0.6; }
+  92.8% { opacity: 1; }
+}
+.logo-neon::before,
+.logo-neon::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  text-shadow: none;
+  pointer-events: none;
+}
+.logo-neon:hover::before {
+  opacity: 0.85;
+  color: var(--color-cyan);
+  animation: glitch-a 0.35s steps(2, end) infinite;
+}
+.logo-neon:hover::after {
+  opacity: 0.85;
+  color: var(--color-neon);
+  animation: glitch-b 0.3s steps(2, end) infinite;
+}
+@keyframes glitch-a {
+  0% { clip-path: inset(10% 0 60% 0); transform: translate(-2px, 1px); }
+  50% { clip-path: inset(55% 0 15% 0); transform: translate(2px, -1px); }
+  100% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 0); }
+}
+@keyframes glitch-b {
+  0% { clip-path: inset(65% 0 5% 0); transform: translate(2px, 0); }
+  50% { clip-path: inset(5% 0 70% 0); transform: translate(-2px, 1px); }
+  100% { clip-path: inset(40% 0 35% 0); transform: translate(1px, -1px); }
+}
+
+/* ─── Boutons : bordure néon animée (neon → cyan), effet magnétique, enfoncement ─────────── */
+/* Le dégradé tourne via un transform (composité par la carte graphique, pas de repeinte). */
+.fx-ring {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.fx-ring::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: -2;
+  /* Carré plus large que la diagonale du bouton : aucun trou pendant la rotation. */
+  width: 150%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: conic-gradient(var(--color-neon), var(--color-cyan), var(--color-neon));
+  animation: fx-spin 4s linear infinite;
+}
+.fx-ring::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: 2px;
+  background: var(--fx-fill, var(--color-neon));
+}
+@keyframes fx-spin {
+  to { transform: rotate(1turn); }
+}
+/* Boutons secondaires : bordure animée au survol seulement. */
+.fx-ring-hover {
+  --fx-fill: var(--color-card);
+}
+.fx-ring-hover::before,
+.fx-ring-hover::after {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.fx-ring-hover::before {
+  animation-play-state: paused; /* aucun calcul tant qu'il n'est pas visible */
+}
+.fx-ring-hover:hover::before,
+.fx-ring-hover:hover::after {
+  opacity: 1;
+  animation-play-state: running;
+}
+/* --mx / --my : décalage vers la souris, calculé par MagneticButtons (motion-effects.tsx). */
+.fx-magnetic {
+  transform: translate(var(--mx, 0px), var(--my, 0px));
+  transition: transform 0.2s ease-out;
+}
+.fx-magnetic:active:not(:disabled) {
+  transform: translate(var(--mx, 0px), var(--my, 0px)) scale(0.97);
+}
+
+/* ─── Halo cyan qui suit le curseur, scanlines rétro (derrière le contenu) ──────────────── */
+.cursor-halo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 440px;
+  height: 440px;
+  margin: -220px 0 0 -220px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-cyan) 14%, transparent), transparent);
+}
+:root.light .cursor-halo {
+  opacity: 0.6;
+}
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) .cursor-halo {
+    opacity: 0.6;
+  }
+}
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-ink) 4%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/* ─── Transition entre les pages : fondu + léger glissement (CSS, sans attendre le JS) ──── */
+.page-enter {
+  animation: page-in 0.35s ease-out both;
+}
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* Petits écrans : ni halo ni réseau d'indices (fluidité). */
+@media (max-width: 767px) {
+  .cursor-halo,
+  .clue-network {
+    display: none;
+  }
+}
+
 /* ─── Effets désactivés (bouton « Effets » ou préférence système) ──────────────────────── */
 html.fx-off .intro,
 html.intro-skip .intro,
 html.fx-off .road,
 html.fx-off .tagline-cursor,
-html.fx-off .clue-network {
+html.fx-off .clue-network,
+html.fx-off .cursor-halo,
+html.fx-off .scanlines,
+html.fx-off .fx-ring::before,
+html.fx-off .fx-ring::after,
+html.fx-off .logo-neon::before,
+html.fx-off .logo-neon::after {
   display: none;
 }
 html.fx-off .glow-neon,
@@ -246,16 +398,40 @@ html.fx-off .icon-frame:hover,
 html.fx-off .icon-frame:focus-within {
   box-shadow: none;
 }
+html.fx-off .logo-neon,
+html.fx-off .page-enter {
+  animation: none;
+}
+html.fx-off .fx-magnetic,
+html.fx-off .fx-magnetic:active {
+  transform: none;
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .intro,
   .road,
   .tagline-cursor,
-  .clue-network {
+  .clue-network,
+  .cursor-halo,
+  .scanlines,
+  .fx-ring::before,
+  .fx-ring::after,
+  .logo-neon::before,
+  .logo-neon::after {
     display: none;
   }
   .glow-neon,
   .icon-frame:hover,
   .icon-frame:focus-within {
     box-shadow: none;
+  }
+  .logo-neon,
+  .page-enter {
+    animation: none;
+  }
+  .fx-magnetic,
+  .fx-magnetic:active {
+    transform: none;
+    transition: none;
   }
 }

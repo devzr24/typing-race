@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Monoton, Nunito, Righteous } from "next/font/google";
 import { ClueNetwork } from "@/components/clue-network";
 import { EFFECTS_BOOT_SCRIPT, FeedbackProvider, Intro } from "@/components/effects";
+import { CursorHalo, MagneticButtons } from "@/components/motion-effects";
 import { SiteHeader } from "@/components/site-header";
 import { I18nProvider } from "@/i18n/client";
 import { getFeedbackPreferences, getLocale, getMessages, getTheme } from "@/i18n/server";
@@ -43,6 +44,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <Intro name={m.app.name} />
             {/* Réseau d'indices : au-dessus de la route, derrière le contenu (.above-effects). */}
             <ClueNetwork />
+            <CursorHalo />
+            <div className="scanlines" aria-hidden="true" />
+            <MagneticButtons />
             <div className="above-effects">
               <SiteHeader theme={theme} />
             </div>

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { io, type Socket } from "socket.io-client";
 import { Avatar } from "@/components/avatar";
 import { useFeedback } from "@/components/effects";
+import { DecodedCode, useEffectsEnabled } from "@/components/motion-effects";
 import { buttonClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
@@ -73,7 +75,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       <section className="flex flex-col gap-2">
         <h1 className="text-sm text-mist">{m.room.codeLabel}</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <p className="font-mono text-4xl font-semibold tracking-[0.3em]">{room.code}</p>
+          <DecodedCode code={room.code} className="font-mono text-4xl font-semibold tracking-[0.3em]" />
           <CopyButton text={room.code} />
         </div>
         <p className="text-sm text-mist">{m.room.shareHint}</p>
@@ -89,9 +91,12 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           </span>
         </div>
         <ul className="flex flex-col gap-2">
-          {room.participants.map((p) => (
-            <ParticipantRow key={p.id} participant={p} isSelf={p.id === selfId} />
-          ))}
+          {/* initial={false} : pas d'animation pour les joueurs déjà présents à l'ouverture. */}
+          <AnimatePresence initial={false}>
+            {room.participants.map((p) => (
+              <ParticipantRow key={p.id} participant={p} isSelf={p.id === selfId} />
+            ))}
+          </AnimatePresence>
         </ul>
       </section>
 
@@ -105,11 +110,20 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   );
 }
 
+const NEON_GLOW = "0 0 18px color-mix(in srgb, var(--color-neon) 60%, transparent)";
+const NO_GLOW = "0 0 0px color-mix(in srgb, var(--color-neon) 0%, transparent)";
+
 function ParticipantRow({ participant: p, isSelf }: { participant: PublicParticipant; isSelf: boolean }) {
   const { m } = useI18n();
+  const animated = useEffectsEnabled();
+  // Chaque joueur dans une carte ; l'hôte est mis en valeur par une bordure neon.
   return (
-    // Chaque joueur dans une carte ; l'hôte est mis en valeur par une bordure neon.
-    <li
+    <motion.li
+      layout={animated}
+      initial={animated ? { opacity: 0, x: -24, boxShadow: NEON_GLOW } : false}
+      animate={{ opacity: 1, x: 0, boxShadow: NO_GLOW }}
+      exit={animated ? { opacity: 0, transition: { duration: 0.3 } } : { opacity: 0, transition: { duration: 0 } }}
+      transition={{ duration: 0.45, ease: "easeOut", boxShadow: { duration: 1.2 } }}
       className={`flex items-center gap-3 rounded-lg border-2 bg-card px-3 py-2 ${p.isHost ? "border-neon" : "border-line"}`}
     >
       <Avatar name={p.displayName} image={p.image} />
@@ -121,7 +135,7 @@ function ParticipantRow({ participant: p, isSelf }: { participant: PublicPartici
           {m.room.host}
         </span>
       ) : null}
-    </li>
+    </motion.li>
   );
 }
 
