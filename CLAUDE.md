@@ -1,4 +1,5 @@
 @AGENTS.md
+@.claude/workflow/orchestrator.md
 
 # Typing Race — projet scolaire (cours Web V)
 
@@ -41,6 +42,8 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `src/app/globals.css` — SEUL endroit des couleurs, polices et effets visuels (direction artistique Keyclue, ADR 0010).
 - `src/components/effects.tsx`, `clue-network.tsx` — intro, slogan tapé, réseau d'indices, boutons Son / Effets.
 - `src/components/motion-effects.tsx` — halo du curseur, boutons magnétiques, code décodé ; `src/app/template.tsx` — transition de page.
+- `.claude/` — travail multi-agents : règles d'orchestration (`workflow/`), pont vers Codex
+  (`scripts/delegate.ts`), sous-agents Claude (`agents/`) et skills.
 - `docs/adr/` — décisions d'architecture (ADR). Toute nouvelle décision structurante = nouvel ADR.
 
 ## Interface
@@ -79,7 +82,11 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `npm start` — production (`NODE_ENV=production tsx server.ts`), utilisé par Railway.
 - `npm run db:migrate:deploy` — applique les migrations (`prisma migrate deploy`).
 - `npm run lint` — ESLint.
+- `npm run typecheck` — types des routes Next puis `tsc --noEmit`.
 - `npm test` — Vitest.
+- `npm run test:e2e` — Playwright.
+- `npx tsx .claude/scripts/delegate.ts <luna|sol> <brief.md>` — délègue une tâche à Codex ;
+  `… delegate.ts quota` affiche le quota Codex restant.
 
 ## Déploiement (Railway)
 

@@ -1,0 +1,18 @@
+{
+  "luna": {
+    "model": "gpt-6-luna",
+    "effort": "medium",
+    "sandbox": "workspace-write",
+    "timeoutMin": 15,
+    "skills": ["minimal-patch", "task-handoff"],
+    "role": "Développeur léger. Exécute exactement la micro-tâche demandée, rien de plus."
+  },
+  "sol": {
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "sandbox": "workspace-write",
+    "timeoutMin": 40,
+    "skills": ["minimal-patch", "task-handoff"],
+    "role": "Développeur principal. Implémente la tâche avec un patch minimal et vérifie-la avec les commandes du projet."
+  }
+}

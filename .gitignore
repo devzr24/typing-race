@@ -59,3 +59,6 @@ Thumbs.db
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Claude Code (réglages personnels)
+.claude/settings.local.json
