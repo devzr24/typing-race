@@ -64,7 +64,7 @@ Remarques :
 
 ## Prévu (non créé en base)
 
-Tables envisagées pour les exigences restantes ([matrice](../matrice-des-exigences.md)).
+Tables envisagées pour les exigences restantes ([matrice](../EXIGENCES.md)).
 Les noms et champs sont indicatifs : chacune sera conçue, migrée et documentée au checkpoint qui la demande.
 
 ```mermaid

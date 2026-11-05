@@ -53,7 +53,7 @@ Pour lancer les tests de bout en bout contre un site en ligne :
 
 ## Documentation
 
-- [Matrice des exigences](docs/matrice-des-exigences.md) — état de chaque exigence du cahier des charges
+- [Matrice des exigences](docs/EXIGENCES.md) — état de chaque exigence de l'énoncé
 - [Modèle de données](docs/architecture/modele-de-donnees.md) — tables actuelles et prévues
 - [Machine à états d'une salle](docs/architecture/machine-a-etats.md)
 - [Décisions d'architecture (ADR)](docs/adr/) — de l'hébergement aux migrations et à la langue
