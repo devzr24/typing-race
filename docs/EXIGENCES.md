@@ -4,14 +4,14 @@ Identifiants : ceux de l'énoncé « Web V — Travail de session ».
 Statut : **complet**, **partiel** (une partie livrée, le reste à faire), **non fait**.
 Tests : `*.test.ts` = tests unitaires (Vitest) ; `e2e/…` = tests de bout en bout (Playwright).
 
-Mise à jour : 2026-11-05.
+Mise à jour : 2026-11-06.
 
 ## Bilan
 
 | Statut | Nombre |
 |---|---|
-| Complet | 12 |
-| Partiel | 23 |
+| Complet | 13 |
+| Partiel | 22 |
 | Non fait | 55 |
 | **Total** | **90** |
 
@@ -47,7 +47,7 @@ Mise à jour : 2026-11-05.
 |---|---|---|---|---|
 | AUTH-01 | complet | `src/auth.ts`, `src/app/login/`, `src/app/register/`, `src/lib/auth/` | `src/lib/auth/username.test.ts`, `src/lib/auth/password.test.ts` | GitHub, Discord, et nom d'utilisateur + mot de passe (ADR 0004, 0005). Parcours OAuth vérifié manuellement. |
 | AUTH-02 | partiel | `src/auth.ts` (fournisseur `guest`), `src/lib/auth/guest.ts`, `src/app/login/login-forms.tsx` | `e2e/room.spec.ts` | Session d'invité dans le cookie signé d'Auth.js. **Écarts** : le pseudo est facultatif (généré si vide) et limité à 3–24 caractères au lieu de 3–20. |
-| AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts` | — | Pas d'historique ni de photo pour l'invité ; avatar = initiale du nom. **Non conforme** : un invité peut actuellement créer une salle (`createRoomAction` accepte l'identité invité). |
+| AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` (un invité ne peut pas créer de salle) | Un invité ne peut pas créer de salle : refus côté serveur et lien vers la connexion à la place du formulaire. Pas de photo pour l'invité ; avatar = initiale du nom. **Partiel** : l'historique n'existe pas encore (HIST-01), la règle « pas d'historique pour l'invité » reste à appliquer. |
 | AUTH-04 | non fait | — | — | Seule la photo fournie par GitHub/Discord est affichée ; pas de téléversement. |
 | AUTH-05 | non fait | — | — | — |
 | AUTH-06 | non fait | — | — | Pas de page de profil. |
@@ -56,7 +56,7 @@ Mise à jour : 2026-11-05.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| SALLE-01 | partiel | `src/lib/rooms/service.ts`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` | Le créateur devient l'hôte. **Manque** : choix participant ou spectateur ; réserver la création aux utilisateurs connectés (voir AUTH-03). |
+| SALLE-01 | complet | `src/lib/rooms/service.ts`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx`, `src/app/room/[code]/room-view.tsx`, `prisma/migrations/20261106120000_room_spectator/` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` | Création réservée aux utilisateurs connectés ; le créateur devient l'hôte et choisit d'être participant (par défaut) ou spectateur (`RoomParticipant.isSpectator`), visible en direct dans la salle. Les spectateurs ne pourront pas taper : à appliquer avec la course (COURSE-05). |
 | SALLE-02 | complet | `src/lib/rooms/code.ts`, `src/lib/rooms/code-generator.ts` | `src/lib/rooms/code.test.ts` | 6 caractères, alphabet sans 0/O/1/I/L, générateur cryptographique, unicité en base. |
 | SALLE-03 | non fait | — | — | Toutes les salles sont actuellement accessibles par code. |
 | SALLE-04 | non fait | — | — | — |
@@ -96,7 +96,7 @@ Mise à jour : 2026-11-05.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| COURSE-01 | partiel | `docs/architecture/machine-a-etats.md`, `prisma/schema.prisma` (`RoomStatus`) | — | Machine à états documentée, mais l'énumération ne contient que `EN_ATTENTE`, `EN_COURSE`, `TERMINEE` ; seul `EN_ATTENTE` est utilisé. **Manque** : `DÉCOMPTE`, `RÉSULTATS`, `FERMÉE` et les transitions. |
+| COURSE-01 | partiel | `docs/ARCHITECTURE.md`, `docs/architecture/machine-a-etats.md`, `prisma/schema.prisma` (`RoomStatus`) | — | Machine à états documentée avec les états de l'énoncé (`EN_ATTENTE → DECOMPTE → EN_COURSE → RESULTATS → EN_ATTENTE \| FERMEE`). L'énumération ne contient que `EN_ATTENTE`, `EN_COURSE`, `TERMINEE` ; seul `EN_ATTENTE` est utilisé. **Manque** : `DECOMPTE`, `RESULTATS`, `FERMEE` et les transitions. |
 | COURSE-02 | non fait | — | — | — |
 | COURSE-03 | non fait | — | — | — |
 | COURSE-04 | non fait | — | — | — |
@@ -156,9 +156,9 @@ Mise à jour : 2026-11-05.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| TEST-01 | partiel | `src/**/*.test.ts` | 76 tests unitaires (10 fichiers) | Couvre l'authentification, les codes, le service de salles, la configuration serveur, la langue. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
-| TEST-02 | partiel | `e2e/room.spec.ts`, `playwright.config.ts` | 4 tests de bout en bout | Création de salle, arrivée et départ en direct, code inexistant, langue et thème. |
-| TEST-03 | partiel | `e2e/room.spec.ts` | — | Aucun test n'utilise OAuth. **Écart** : les tests se connectent en invité, pas avec un compte nom d'utilisateur + mot de passe. |
+| TEST-01 | partiel | `src/**/*.test.ts` | 87 tests unitaires (10 fichiers) | Couvre l'authentification, les codes, le service de salles, la configuration serveur, la langue. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
+| TEST-02 | partiel | `e2e/room.spec.ts`, `playwright.config.ts` | 5 tests de bout en bout | Inscription puis création de salle, arrivée et départ en direct, refus de création pour un invité, code inexistant, langue et thème. |
+| TEST-03 | partiel | `e2e/room.spec.ts` | — | Aucun test n'utilise OAuth. L'hôte s'inscrit avec un nom d'utilisateur + mot de passe ; le joueur qui rejoint est un invité. |
 
 ## 6.2 Performance
 
@@ -192,7 +192,7 @@ Mise à jour : 2026-11-05.
 | Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race. Accès de l'enseignant à confirmer ; commits à poursuivre régulièrement. |
 | URL de production | complet | https://typing-race-production-4a76.up.railway.app |
 | `README.md` | partiel | Manque : captures d'écran, PostgreSQL via Docker Compose, compte de démonstration. |
-| `docs/ARCHITECTURE.md` | non fait | Contenu existant à regrouper : `docs/architecture/` (modèle de données, machine à états) et ADR 0002 (temps réel). Manque : flux des messages temps réel, ADR sur les bots. |
+| `docs/ARCHITECTURE.md` | partiel | Version initiale : vue d'ensemble, modèle de données, machine à états, ADR temps réel, flux temps réel actuels et prévus, approche prévue pour les bots. Manque pour la remise finale : ADR sur les bots, flux de course réels. |
 | `docs/EXIGENCES.md` | complet | Ce fichier. |
 | `docs/DEMARCHE-CREATIVE.md` | non fait | Voir DES-01 à DES-03. |
 | `docs/IA.md` | non fait | `CLAUDE.md` et `AGENTS.md` sont déjà commités. |

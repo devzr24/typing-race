@@ -42,6 +42,7 @@ erDiagram
         string displayName
         string image
         boolean isGuest
+        boolean isSpectator "hôte spectateur seulement (SALLE-01)"
         datetime joinedAt "ordre d'arrivée (transfert d'hôte)"
     }
 ```
@@ -51,7 +52,7 @@ erDiagram
 | `User` | Utilisateur inscrit, par GitHub/Discord ou par nom d'utilisateur + mot de passe ; aucun courriel stocké ([ADR 0004](../adr/0004-authentification-authjs.md)). |
 | `Account` | Lien entre un utilisateur et son compte GitHub ou Discord (format de l'adaptateur Prisma d'Auth.js) ; aucun jeton d'accès conservé. |
 | `Room` | Salle rejointe par code, avec son état et son hôte ; supprimée quand le dernier participant part ([ADR 0006](../adr/0006-salles-transfert-hote.md)). |
-| `RoomParticipant` | Présence d'un utilisateur ou d'un invité dans une salle ; `joinedAt` décide du prochain hôte. |
+| `RoomParticipant` | Présence d'un utilisateur ou d'un invité dans une salle ; `joinedAt` décide du prochain hôte ; `isSpectator` marque l'hôte qui a choisi de seulement regarder (SALLE-01). |
 
 Remarques :
 
@@ -65,73 +66,73 @@ Remarques :
 ## Prévu (non créé en base)
 
 Tables envisagées pour les exigences restantes ([matrice](../EXIGENCES.md)).
-Les noms et champs sont indicatifs : chacune sera conçue, migrée et documentée au checkpoint qui la demande.
+Les noms et champs sont indicatifs : chaque table sera conçue, migrée et documentée avec
+l'exigence qui la demande.
 
 ```mermaid
 erDiagram
-    Room ||--o| RoomSettings : "configure (LOBBY-01)"
-    Room ||--o{ RoomInvite : "lien privé (LOBBY-02)"
-    Room ||--o{ Race : "organise (RACE-01)"
-    Text ||--o{ Race : "texte tapé (TEXT-01..04)"
-    Race ||--|{ RaceResult : "produit (STAT-01)"
-    User |o--o{ RaceResult : "obtient (STAT-03)"
-    RaceResult ||--o{ KeyStat : "détaille (STAT-02)"
-    User ||--o{ UserTrophy : "gagne (STAT-04)"
-    Trophy ||--o{ UserTrophy : "attribué"
+    Room ||--o| RoomSettings : "configure (CONF-01..12)"
+    Room ||--o{ RoomInvite : "lien d'invitation (SALLE-04)"
+    Room ||--o{ RoomBan : "expulsion (SALLE-07)"
+    Room ||--o{ Race : "organise (COURSE-01)"
+    Passage ||--o{ Race : "texte cohérent (CONF-03)"
+    Race ||--|{ RaceResult : "produit (RES-05)"
+    User |o--o{ RaceResult : "historique (HIST-01)"
 
     RoomSettings {
         string roomId FK
-        boolean isPublic "salle publique / matchmaking"
-        int maxPlayers "au moins 30"
-        boolean hostPlays "hôte participant ou spectateur"
-        string textOptions "langue, longueur, mode d'erreurs"
-        int botCount "BOT-01..03"
+        enum visibility "SALLE-03"
+        int capacity "2 à 30, spectateurs exclus (SALLE-05)"
+        int maxSeconds "null ou 30 à 600 (CONF-01)"
+        string textLanguage "fr | en (CONF-02)"
+        enum textType "COHERENT | ALEATOIRE (CONF-03)"
+        int wordCount "CONF-04"
+        enum complexity "CONF-05"
+        string options "ponctuation, nombres, majuscules, accents, caractères (CONF-06, CONF-07)"
+        enum errorMode "OBLIGATOIRE | LIBRE (CONF-08)"
+        boolean bonuses "CONF-09"
+        string bots "niveaux des bots (CONF-10)"
     }
     RoomInvite {
-        string token UK "lien privé unique"
+        string token UK "un lien par invité"
         string roomId FK
+    }
+    RoomBan {
+        string roomId FK
+        string key "personne expulsée"
+    }
+    Passage {
+        string id PK
+        string language
+        string content "corpus du domaine public (seed, TECH-04)"
     }
     Race {
         string id PK
         string roomId FK
-        string textId FK
+        string text "texte réellement tapé"
+        string settings "copie de la configuration"
         datetime startedAt
         datetime endedAt
-    }
-    Text {
-        string id PK
-        string language
-        string content
     }
     RaceResult {
         string id PK
         string raceId FK
-        string participantKey "utilisateur, invité ou bot"
-        string userId FK "null pour invité et bot"
-        string kind "USER | GUEST | BOT"
+        string userId FK "null pour un invité ou un bot"
+        string displayName
+        enum kind "UTILISATEUR | INVITE | BOT"
         int rank
         float wpm
+        float rawWpm
         float accuracy
-        boolean finished "abandon / déconnexion (RACE-06)"
-    }
-    KeyStat {
-        string resultId FK
-        string key "touche"
-        int hits
         int errors
-    }
-    Trophy {
-        string id PK
-        string code UK
-    }
-    UserTrophy {
-        string userId FK
-        string trophyId FK
-        datetime earnedAt
+        int timeMs
+        enum outcome "TERMINE | TEMPS_ECOULE | ABANDON (COURSE-10)"
+        json wpmSeries "série temporelle du MPM (RES-03)"
     }
 ```
 
-- **Statistiques d'invité** (AUTH-03, AUTH-04) : les résultats d'un invité seraient liés à sa
-  `participantKey` (sans `userId`), pour les afficher en fin de course et pendant sa séance.
-- **Bots** (BOT-01..03) : participants de course de type `BOT`, sans compte.
-- **Bonus** (BONUS-01..03) : modèle à définir avec le cahier des charges détaillé.
+- **Invités et bots** : une ligne `RaceResult` sans `userId`, pour que la page de résultats
+  réaffichée depuis l'historique soit complète (HIST-02). Seuls les utilisateurs connectés ont un
+  historique (RES-05, AUTH-03).
+- **Historique** (HIST-01, HIST-02) : liste paginée des `RaceResult` de l'utilisateur ; la page de
+  résultats est reconstruite à partir de `Race` et de ses `RaceResult`.
