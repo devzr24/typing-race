@@ -91,7 +91,7 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 
 ## Déploiement (Railway)
 
-Production : https://typing-race-production-4a76.up.railway.app (redéployé à chaque push sur `master`).
+Production : https://typing-race-production-4a76.up.railway.app (redéployé à chaque fusion dans `master`).
 
 Configuré dans `railway.json` : build `npm run build`, puis `npm start`. Au démarrage sur
 Railway, `server.ts` applique les migrations (`prisma migrate deploy`) avant d'écouter (ADR 0008).
@@ -119,3 +119,14 @@ En local, le serveur doit tourner sur le port 3000 : c'est l'adresse de retour O
 - Toujours montrer `git status` avant de commiter.
 - Ne jamais commiter `.env`.
 - Ne pousser que sur demande explicite.
+
+## Branches
+
+- **Une branche par feature ou correction**, créée depuis `master` à jour avant la première
+  modification : `<type>/<portée>-<description>` en minuscules, ex. `feat/room-visibilite`,
+  `fix/auth-invite`, `chore/deps-next`.
+- **Jamais de commit directement sur `master`** : on y arrive seulement par fusion.
+- Sur demande : push de la branche, puis pull request vers `master` (la CI tourne sur la PR).
+  Fusion seulement sur demande et CI verte, en **commit de fusion** (pas de squash : l'historique
+  régulier est évalué), puis suppression de la branche.
+- La fusion dans `master` déclenche le déploiement Railway.

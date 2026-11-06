@@ -21,5 +21,5 @@ Budget :
 - Démarrage de Luna ou Sol : environ 15 s et des dizaines de milliers de tokens d'entrée (en grande partie en cache). Regrouper dans un seul brief plusieurs micro-tâches compatibles (même zone, sans dépendance d'ordre).
 - LARGE : découper en lots vérifiables séparément, un agent par lot. Deux lots (ou deux tâches) indépendants peuvent tourner en parallèle, 2 agents au plus, jamais sur les mêmes fichiers (section « Développement en parallèle » de l'orchestrateur).
 - Quota Codex sous 10 % sur une fenêtre : plus aucune délégation à Codex (`delegate.ts` refuse), Sonnet prend le relais.
-- Travailler en place, sur `master`. Pas de worktree sauf demande de l'utilisateur.
+- Travailler en place, sur la branche de la feature (CLAUDE.md, « Branches »). Pas de worktree sauf demande de l'utilisateur.
 - Un agent de plus doit apporter une valeur que la vérification déterministe n'apporte pas.
