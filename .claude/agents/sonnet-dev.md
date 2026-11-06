@@ -1,6 +1,6 @@
 ---
 name: sonnet-dev
-description: Développeur Sonnet (effort medium), relève de Sol seulement : quota Codex épuisé, ou Sol en échec deux fois sur la même tâche. Son code est relu par Sol (relecture croisée).
+description: Développeur Sonnet (effort medium), relève de Sol seulement : quota Codex sous 10 %, ou Sol en échec deux fois sur la même tâche. Son code est relu par Sol (relecture croisée).
 model: sonnet
 effort: medium
 skills:

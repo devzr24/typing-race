@@ -189,7 +189,13 @@ function delegate(argv: string[]): void {
     console.log(`Taille du prompt : ${(Buffer.byteLength(prompt, "utf8") / 1024).toFixed(1)} Ko`);
     console.log(`Sections : ${(prompt.match(/^# .+$/gm) ?? []).join(" | ")}`);
     console.log(`Codex : ${codexBin()}`);
+    console.log(`Quota : ${codexQuota()}`);
     return;
+  }
+  if (codexBlocked(readCodexLimits())) {
+    console.log(`[${name} · REFUSÉ : quota Codex sous ${CODEX_MIN_REMAINING}% (${codexQuota()})]`);
+    console.log("Ne plus déléguer à Codex : développement par sonnet-dev, relecture du code de Sonnet par l'orchestrateur.");
+    process.exit(3);
   }
   runCodex(name, agent, prompt, effort);
 }
@@ -211,10 +217,15 @@ function until(epochSec: number): string {
   return h >= 24 ? `reset dans ${Math.floor(h / 24)}j${h % 24}h` : `reset dans ${h}h${String(min % 60).padStart(2, "0")}`;
 }
 
+interface CodexLimits {
+  windows: RateWindow[];
+  timestamp?: string;
+}
+
 // Codex n'expose pas ses limites en ligne de commande, mais chaque session enregistrée les note.
-function codexQuota(): string {
+function readCodexLimits(): CodexLimits | null {
   const dir = path.join(os.homedir(), ".codex", "sessions");
-  if (!fs.existsSync(dir)) return "inconnu (aucune session Codex)";
+  if (!fs.existsSync(dir)) return null;
   const files = fs
     .readdirSync(dir, { recursive: true })
     .map(String)
@@ -229,16 +240,34 @@ function codexQuota(): string {
       const entry = JSON.parse(lines[i]);
       const limits = findKey(entry, "rate_limits") as { primary?: RateWindow; secondary?: RateWindow } | undefined;
       if (!limits?.primary) continue;
-      const win = (w: RateWindow) => {
-        const label = w.window_minutes >= 1440 ? `${Math.round(w.window_minutes / 1440)}j` : `${Math.round(w.window_minutes / 60)}h`;
-        const reset = w.resets_at * 1000 <= Date.now();
-        return `${label} ${reset ? 100 : Math.round(100 - w.used_percent)}% restant (${until(w.resets_at)})`;
-      };
-      const age = entry.timestamp ? ` [relevé il y a ${fmtDuration(Date.now() - Date.parse(entry.timestamp))}]` : "";
-      return [limits.primary, limits.secondary].filter((w): w is RateWindow => !!w).map(win).join(" · ") + age;
+      const windows = [limits.primary, limits.secondary].filter((w): w is RateWindow => !!w);
+      return { windows, timestamp: entry.timestamp };
     }
   }
-  return "inconnu (aucune limite enregistrée récemment)";
+  return null;
+}
+
+function remainingPercent(w: RateWindow): number {
+  return w.resets_at * 1000 <= Date.now() ? 100 : Math.round(100 - w.used_percent);
+}
+
+function codexQuota(): string {
+  const limits = readCodexLimits();
+  if (!limits) return "inconnu (aucune limite enregistrée récemment)";
+  const win = (w: RateWindow) => {
+    const label = w.window_minutes >= 1440 ? `${Math.round(w.window_minutes / 1440)}j` : `${Math.round(w.window_minutes / 60)}h`;
+    return `${label} ${remainingPercent(w)}% restant (${until(w.resets_at)})`;
+  };
+  const age = limits.timestamp ? ` [relevé il y a ${fmtDuration(Date.now() - Date.parse(limits.timestamp))}]` : "";
+  const blocked = codexBlocked(limits) ? ` → sous ${CODEX_MIN_REMAINING}% : plus de délégation à Codex` : "";
+  return limits.windows.map(win).join(" · ") + age + blocked;
+}
+
+// Choix de l'utilisateur : plus rien n'est délégué à Codex quand une de ses fenêtres passe sous ce seuil.
+const CODEX_MIN_REMAINING = 10;
+
+function codexBlocked(limits: CodexLimits | null): boolean {
+  return !!limits && limits.windows.some((w) => remainingPercent(w) < CODEX_MIN_REMAINING);
 }
 
 const argv = process.argv.slice(2);

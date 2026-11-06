@@ -27,7 +27,7 @@ Principe : maximiser le travail correctement accompli par unité de quota. Un ap
 |---|---|---|
 | Haiku | sous-agent `researcher` | localiser, explorer, origine d'un comportement, doc d'une librairie, web. Ne code pas. |
 | Sol (medium) | `delegate.ts sol` | **développeur principal, à épuiser en premier** : tout le développement délégué, y compris les tâches délicates et les lots de micro-changements |
-| Sonnet (medium) | sous-agent `sonnet-dev` | relève de Sol seulement : quota Codex épuisé, ou Sol en échec deux fois sur la même tâche |
+| Sonnet (medium) | sous-agent `sonnet-dev` | relève de Sol seulement : quota Codex sous 10 %, ou Sol en échec deux fois sur la même tâche |
 | Luna | `delegate.ts luna` | non utilisée tant que Sol a du quota (même quota Codex) |
 | Sonnet (high) | sous-agent `reviewer` | relit le code écrit par Sol ou Luna. Ne modifie rien. |
 | Sol (high) | `delegate.ts sol-review --diff <commit>` | relit le code écrit par Sonnet. Lecture seule, diff joint au prompt. |
@@ -47,6 +47,22 @@ Le relecteur n'est jamais l'auteur du code : il n'a pas ses angles morts.
 
 Brief du relecteur : l'objectif de la feature, le checkpoint, les critères d'acceptation et le commit de départ ; jamais tes conclusions ni le compte rendu de l'auteur.
 
+## Développement en parallèle
+Jusqu'à **2 agents de dev en même temps** quand deux tâches (ou deux lots d'une feature LARGE) sont indépendantes :
+- aucun fichier en commun, aucun ordre imposé, aucune ne dépend du résultat de l'autre ;
+- fichiers partagés à surveiller : `src/i18n/messages/fr.ts` et `en.ts`, `prisma/schema.prisma` et les migrations, `package.json` et le lockfile, `globals.css`, `docs/`. Un seul agent en est propriétaire ; sinon tu ajoutes toi-même ces lignes (TINY) avant ou après les deux agents ;
+- pas d'`npm install`, de migration Prisma ni de build pendant que deux agents travaillent.
+
+Qui : deux Sol tant que le quota Codex le permet (c'est aussi la façon la plus rapide de l'épuiser) ; deux `sonnet-dev` une fois Codex sous le seuil. Si une seule tâche est délicate, elle prend l'effort `high`, pas un autre agent.
+
+Comment :
+1. Un brief par agent, avec la liste des fichiers qu'il possède et l'interdiction de toucher aux autres.
+2. Lancer les deux en arrière-plan (`delegate.ts sol` avec `run_in_background`, ou `sonnet-dev` en arrière-plan), dans le même dossier : pas de worktree, les agents ne commitent pas.
+3. Attendre les deux comptes rendus, puis vérifier une seule fois l'ensemble (skill `verification`) et contrôler avec `git diff --stat` que chacun est resté dans ses fichiers. Jamais de vérification pendant qu'un agent écrit encore.
+4. La relecture croisée reste unique, sur la feature complète.
+
+En cas de doute sur l'indépendance, enchaîner les tâches plutôt que de les paralléliser.
+
 ## Pipelines
 - TINY : toi → vérification → terminé.
 - Courte (SMALL) : Sol → vérification → terminé.
@@ -59,7 +75,7 @@ Brief du relecteur : l'objectif de la feature, le checkpoint, les critères d'ac
 - **Une seule relecture, sur la feature complète** (MEDIUM et LARGE). Pas de relecture intermédiaire ni de seconde relecture sans raison. Chaque constat est vérifié avant d'être corrigé.
 
 ## Sol ↔ Sonnet
-L'utilisateur veut épuiser le quota de Sol en premier : Sol développe tout ce qui est délégué, même les tâches délicates ou réparties sur plusieurs fichiers (monter son effort à `high` plutôt que changer d'agent). Sonnet ne prend le relais que si le quota Codex est épuisé (`delegate.ts quota`, à consulter avant une feature MEDIUM ou LARGE) ou si Sol échoue deux fois sur la même tâche malgré un brief corrigé. Jamais la même tâche aux deux en développement ; la relecture croisée n'est pas un doublon.
+L'utilisateur veut épuiser le quota de Sol en premier : Sol développe tout ce qui est délégué, même les tâches délicates ou réparties sur plusieurs fichiers (monter son effort à `high` plutôt que changer d'agent). Sonnet ne prend le relais que si le quota Codex passe **sous 10 %** sur l'une de ses fenêtres (5 h ou 7 j ; `delegate.ts quota`, à consulter avant une feature MEDIUM ou LARGE) ou si Sol échoue deux fois sur la même tâche malgré un brief corrigé. Sous 10 %, `delegate.ts` refuse tout appel à Codex (code 3) : développement par `sonnet-dev`, et le code de Sonnet est alors relu par toi avec le skill `revue`, puisque Sol n'est plus disponible. Jamais la même tâche aux deux en développement ; la relecture croisée n'est pas un doublon.
 
 ## Règles fixes
 - Codex sous Windows ne peut pas lancer bash : lance toi-même les vérifications qu'il liste dans RESTE.
