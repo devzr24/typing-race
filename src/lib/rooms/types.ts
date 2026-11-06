@@ -11,6 +11,7 @@ export type Identity = {
 
 export type Participant = Identity & {
   id: string;
+  isSpectator: boolean;
   joinedAt: Date;
 };
 
@@ -29,6 +30,7 @@ export type PublicParticipant = {
   image: string | null;
   isGuest: boolean;
   isHost: boolean;
+  isSpectator: boolean;
 };
 
 export type PublicRoom = {

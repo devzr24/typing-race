@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MemoryRoomStore } from "./memory-store";
-import { createRoom, joinRoom, leaveRoom, toPublicRoom } from "./service";
+import { createRoom, joinRoom, leaveRoom, parseHostRole, toPublicRoom, validateRoomCreator } from "./service";
 import type { Identity } from "./types";
 
 const alice: Identity = { key: "u-alice", displayName: "alice", image: null, isGuest: false };
@@ -22,17 +22,39 @@ async function names(code: string) {
   return room ? toPublicRoom(room).participants.map((p) => `${p.displayName}${p.isHost ? "*" : ""}`) : null;
 }
 
+describe("parseHostRole", () => {
+  it.each(["participant", "spectator"])("accepte le rôle %s", (role) => {
+    expect(parseHostRole(role)).toBe(role);
+  });
+
+  it.each([null, "", "foo", "Participant", " spectator ", new File([], "participant")])(
+    "refuse une valeur de rôle invalide : %s",
+    (value) => {
+      expect(parseHostRole(value)).toBeNull();
+    },
+  );
+});
+
 describe("createRoom", () => {
   it("crée une salle en attente dont le créateur est l'hôte", async () => {
     const code = await createRoom(store, alice);
     const room = await store.findRoom(code);
     expect(room?.status).toBe("EN_ATTENTE");
+    expect(toPublicRoom(room!).participants[0].isSpectator).toBe(false);
     expect(await names(code)).toEqual(["alice*"]);
   });
 
-  it("un invité peut aussi créer une salle", async () => {
-    const code = await createRoom(store, guest);
-    expect(await names(code)).toEqual(["invite-1234*"]);
+  it("conserve le rôle spectateur dans la salle publique", async () => {
+    const code = await createRoom(store, alice, true);
+    await joinRoom(store, code, guest);
+    const room = toPublicRoom((await store.findRoom(code))!);
+    expect(room.participants[0]).toMatchObject({ isHost: true, isSpectator: true });
+    expect(room.participants[1].isSpectator).toBe(false);
+  });
+
+  it("refuse la création pour un invité et accepte un compte inscrit", () => {
+    expect(validateRoomCreator(guest)).toBe("guestCannotCreateRoom");
+    expect(validateRoomCreator(alice)).toBeUndefined();
   });
 });
 
@@ -99,6 +121,28 @@ describe("leaveRoom", () => {
     // Bob est arrivé après l'invité : c'est l'invité qui devient hôte.
     await leaveRoom(store, code, alice.key);
     expect(await names(code)).toEqual(["invite-1234*", "bob"]);
+  });
+
+  it("transfère l'hôte spectateur au participant arrivé le plus tôt", async () => {
+    const code = await createRoom(store, alice, true);
+    await joinRoom(store, code, bob);
+    await joinRoom(store, code, guest);
+    expect(await leaveRoom(store, code, alice.key)).toBe("left");
+    expect(await names(code)).toEqual(["bob*", "invite-1234"]);
+    const room = toPublicRoom((await store.findRoom(code))!);
+    expect(room.participants[0]).toMatchObject({ isHost: true, isSpectator: false });
+    expect(room.participants[1]).toMatchObject({ isHost: false, isSpectator: false });
+  });
+
+  it("conserve le rôle spectateur dans la salle publique après transfert d'hôte", async () => {
+    const code = await createRoom(store, alice, true);
+    await joinRoom(store, code, bob);
+    await joinRoom(store, code, guest);
+    await store.withRoom(code, async (_, locked) => locked.setHost(bob.key));
+    expect(await leaveRoom(store, code, bob.key)).toBe("left");
+    const room = toPublicRoom((await store.findRoom(code))!);
+    expect(room.participants[0]).toMatchObject({ displayName: "alice", isHost: true, isSpectator: true });
+    expect(room.participants[1]).toMatchObject({ isHost: false, isSpectator: false });
   });
 
   it("supprime la salle quand le dernier participant part", async () => {

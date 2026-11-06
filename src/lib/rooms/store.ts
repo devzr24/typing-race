@@ -13,7 +13,7 @@ export interface RoomStore {
   findRoom(code: string): Promise<Room | null>;
   isCodeTaken(code: string): Promise<boolean>;
   /** Crée la salle et son hôte. Lève CodeTakenError si le code vient d'être pris. */
-  createRoom(code: string, host: Identity): Promise<Room>;
+  createRoom(code: string, host: Identity, isSpectator: boolean): Promise<Room>;
   /**
    * Exécute `fn` avec la salle verrouillée : deux arrivées ou départs simultanés
    * dans la même salle sont traités l'un après l'autre.

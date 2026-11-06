@@ -8,8 +8,8 @@ export class MemoryRoomStore implements RoomStore {
   /** Horloge remplaçable pour contrôler l'ordre d'arrivée dans les tests. */
   now: () => Date = () => new Date();
 
-  private participant(identity: Identity): Participant {
-    return { ...identity, id: `p${this.nextId++}`, joinedAt: this.now() };
+  private participant(identity: Identity, isSpectator = false): Participant {
+    return { ...identity, isSpectator, id: `p${this.nextId++}`, joinedAt: this.now() };
   }
 
   async findRoom(code: string) {
@@ -21,14 +21,14 @@ export class MemoryRoomStore implements RoomStore {
     return this.rooms.has(code);
   }
 
-  async createRoom(code: string, host: Identity) {
+  async createRoom(code: string, host: Identity, isSpectator = false) {
     if (this.rooms.has(code)) throw new CodeTakenError(code);
     const room: Room = {
       code,
       status: "EN_ATTENTE",
       hostKey: host.key,
       createdAt: this.now(),
-      participants: [this.participant(host)],
+      participants: [this.participant(host, isSpectator)],
     };
     this.rooms.set(code, room);
     return structuredClone(room);

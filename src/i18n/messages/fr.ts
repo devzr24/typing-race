@@ -25,6 +25,10 @@ export const fr = {
     effectsReduced: "Effets réduits par le réglage du système (mouvements réduits)",
   },
   home: {
+    accountRequired: "Connecte-toi avec un compte pour créer une salle.",
+    hostRole: "Ton rôle dans la salle",
+    participant: "Participant",
+    spectatorOnly: "Spectateur seulement",
     createRoom: "Créer une salle",
     creating: "Création…",
     joinLabel: "Rejoindre avec un code",
@@ -64,6 +68,7 @@ export const fr = {
     login: "Se connecter",
   },
   room: {
+    spectator: "spectateur",
     title: "Salle {code}",
     loading: "Chargement de la salle…",
     codeLabel: "Code de la salle",
@@ -84,6 +89,8 @@ export const fr = {
     notJoinedTitle: "Salle non rejointe",
   },
   errors: {
+    guestCannotCreateRoom: "Connecte-toi avec un compte pour créer une salle.",
+    hostRoleInvalid: "Choisis un rôle : participant ou spectateur.",
     required: "Ce champ est obligatoire.",
     usernameLength: "Doit contenir entre {usernameMin} et {usernameMax} caractères.",
     usernameChars: "Seulement des lettres (a-z, sans accents), des chiffres, « _ » et « - ».",

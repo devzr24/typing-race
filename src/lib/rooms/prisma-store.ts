@@ -18,6 +18,7 @@ function toRoom(row: RoomRow): Room {
       displayName: p.displayName,
       image: p.image,
       isGuest: p.isGuest,
+      isSpectator: p.isSpectator,
       joinedAt: p.joinedAt,
     })),
   };
@@ -45,10 +46,10 @@ export class PrismaRoomStore implements RoomStore {
     return (await this.db.room.count({ where: { code } })) > 0;
   }
 
-  async createRoom(code: string, host: Identity) {
+  async createRoom(code: string, host: Identity, isSpectator = false) {
     try {
       const row = await this.db.room.create({
-        data: { code, hostKey: host.key, participants: { create: participantData(host) } },
+        data: { code, hostKey: host.key, participants: { create: { ...participantData(host), isSpectator } } },
         include: withParticipants,
       });
       return toRoom(row);
@@ -69,7 +70,7 @@ export class PrismaRoomStore implements RoomStore {
       const locked: LockedRoom = {
         addParticipant: async (identity) => {
           const p = await tx.roomParticipant.create({ data: { roomId, ...participantData(identity) } });
-          return { ...identity, id: p.id, joinedAt: p.joinedAt };
+          return { ...identity, id: p.id, joinedAt: p.joinedAt, isSpectator: p.isSpectator };
         },
         removeParticipant: async (key) => {
           await tx.roomParticipant.delete({ where: { roomId_key: { roomId, key } } });

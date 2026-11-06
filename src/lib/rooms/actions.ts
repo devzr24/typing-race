@@ -7,17 +7,21 @@ import { publishRoom } from "@/server/realtime";
 import { normalizeRoomCode } from "./code";
 import { identityFromSession } from "./identity";
 import { roomStore } from "./prisma-store";
-import { createRoom, joinRoom, leaveRoom } from "./service";
+import { createRoom, joinRoom, leaveRoom, parseHostRole, validateRoomCreator } from "./service";
 
 export type RoomFormState = {
   error?: ErrorCode;
   values?: { code?: string };
 };
 
-export async function createRoomAction(): Promise<RoomFormState> {
+export async function createRoomAction(_prev: RoomFormState, formData: FormData): Promise<RoomFormState> {
   const identity = identityFromSession(await auth());
-  if (!identity) return { error: "loginRequired" };
-  const code = await createRoom(roomStore, identity);
+  if (!identity) return { error: "guestCannotCreateRoom" };
+  const error = validateRoomCreator(identity);
+  if (error) return { error };
+  const role = parseHostRole(formData.get("role"));
+  if (!role) return { error: "hostRoleInvalid" };
+  const code = await createRoom(roomStore, identity, role === "spectator");
   redirect(`/room/${code}`);
 }
 

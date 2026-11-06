@@ -3,11 +3,20 @@ import { expect, test, type Page } from "@playwright/test";
 /** Depuis l'accueil : page de connexion → « Continuer en invité » → retour à l'accueil. */
 async function continueAsGuest(page: Page, pseudo?: string) {
   await page.goto("/");
-  await page.getByRole("link", { name: "Connexion" }).click();
+  await page.getByRole("banner").getByRole("link", { name: "Connexion" }).click();
   if (pseudo) await page.getByLabel("Pseudo temporaire (facultatif)").fill(pseudo);
   await page.getByRole("button", { name: "Continuer en invité" }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("banner").getByText("(invité)")).toBeVisible();
+}
+
+async function registerHost(page: Page) {
+  await page.goto("/register");
+  await page.getByLabel("Nom d'utilisateur", { exact: true }).fill(`hote-${crypto.randomUUID().slice(0, 18)}`);
+  await page.getByLabel("Mot de passe", { exact: true }).fill("Password-e2e-123");
+  await page.getByLabel("Confirmer le mot de passe").fill("Password-e2e-123");
+  await page.getByRole("button", { name: "Créer mon compte" }).click();
+  await expect(page).toHaveURL("/");
 }
 
 async function createRoom(page: Page): Promise<string> {
@@ -16,8 +25,8 @@ async function createRoom(page: Page): Promise<string> {
   return page.url().split("/room/")[1];
 }
 
-test("accueil → continuer en invité → créer une salle → le code s'affiche", async ({ page }) => {
-  await continueAsGuest(page);
+test("accueil → inscription → créer une salle → le code s'affiche", async ({ page }) => {
+  await registerHost(page);
   const code = await createRoom(page);
 
   // Le code visible est animé (décodage) ; on attend qu'il affiche le code exact.
@@ -37,7 +46,8 @@ test("deux navigateurs : arrivée et départ visibles en direct chez l'hôte", a
   const host = await hostContext.newPage();
   const player = await playerContext.newPage();
 
-  await continueAsGuest(host, "hote-e2e");
+  await registerHost(host);
+  await host.getByRole("radio", { name: "Spectateur seulement" }).check();
   const code = await createRoom(host);
   await expect(host.getByText("En direct")).toBeVisible();
 
@@ -46,6 +56,10 @@ test("deux navigateurs : arrivée et départ visibles en direct chez l'hôte", a
   await player.getByLabel("Rejoindre avec un code").fill(code.toLowerCase());
   await player.getByRole("button", { name: "Rejoindre" }).click();
   await expect(player).toHaveURL(`/room/${code}`);
+
+  await expect(host.getByText("spectateur", { exact: true })).toBeVisible();
+  await expect(player.getByText("spectateur", { exact: true })).toBeVisible();
+  await expect(player.getByRole("listitem").filter({ hasText: "joueur-e2e" }).getByText("spectateur", { exact: true })).toHaveCount(0);
 
   // Sans recharger la page, l'hôte voit le joueur arriver…
   await expect(host.getByRole("heading", { name: "Participants (2)" })).toBeVisible();
@@ -61,6 +75,13 @@ test("deux navigateurs : arrivée et départ visibles en direct chez l'hôte", a
   await playerContext.close();
 });
 
+test("un invité ne peut pas créer de salle", async ({ page }) => {
+  await continueAsGuest(page);
+  await expect(page.getByRole("button", { name: "Créer une salle" })).toHaveCount(0);
+  await expect(page.getByText("Connecte-toi avec un compte pour créer une salle.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Aller à la page de connexion" })).toHaveAttribute("href", "/login");
+});
+
 test("code de salle inexistant : message d'erreur clair", async ({ page }) => {
   await continueAsGuest(page);
   await page.getByLabel("Rejoindre avec un code").fill("ZZZZZZ");
@@ -74,7 +95,7 @@ test("langue et thème : choix appliqués et mémorisés", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
 
   await page.getByLabel("Langue").selectOption("en");
-  await expect(page.getByRole("button", { name: "Create a room" })).toBeVisible();
+  await expect(page.getByText("Log in with an account to create a room.")).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 
   await page.getByLabel("Theme").selectOption("dark");

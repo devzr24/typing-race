@@ -80,6 +80,7 @@ model RoomParticipant {
   displayName String
   image       String?
   isGuest     Boolean
+  isSpectator Boolean  @default(false)
   /// Ordre d'arrivée : sert au transfert d'hôte.
   joinedAt    DateTime @default(now())
 

@@ -25,6 +25,10 @@ export const en: Messages = {
     effectsReduced: "Effects reduced by your system setting (reduced motion)",
   },
   home: {
+    accountRequired: "Log in with an account to create a room.",
+    hostRole: "Your role in the room",
+    participant: "Participant",
+    spectatorOnly: "Spectator only",
     createRoom: "Create a room",
     creating: "Creating…",
     joinLabel: "Join with a code",
@@ -64,6 +68,7 @@ export const en: Messages = {
     login: "Log in",
   },
   room: {
+    spectator: "spectator",
     title: "Room {code}",
     loading: "Loading the room…",
     codeLabel: "Room code",
@@ -84,6 +89,8 @@ export const en: Messages = {
     notJoinedTitle: "Room not joined",
   },
   errors: {
+    guestCannotCreateRoom: "Log in with an account to create a room.",
+    hostRoleInvalid: "Choose a role: participant or spectator.",
     required: "This field is required.",
     usernameLength: "Must be between {usernameMin} and {usernameMax} characters.",
     usernameChars: "Only letters (a-z, no accents), digits, “_” and “-”.",

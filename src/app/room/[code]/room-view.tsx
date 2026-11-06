@@ -130,6 +130,7 @@ function ParticipantRow({ participant: p, isSelf }: { participant: PublicPartici
       <span className="font-medium break-all">{p.displayName}</span>
       {isSelf ? <span className="text-sm text-ink/70">{m.room.you}</span> : null}
       {p.isGuest ? <span className="text-sm text-ink/70">{m.room.guest}</span> : null}
+      {p.isSpectator ? <span className="text-sm text-ink/70">{m.room.spectator}</span> : null}
       {p.isHost ? (
         <span className="ml-auto rounded border border-neon bg-neon px-2 py-0.5 text-xs font-semibold text-night">
           {m.room.host}

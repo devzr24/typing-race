@@ -31,17 +31,26 @@ export function toPublicRoom(room: Room): PublicRoom {
       displayName: p.displayName,
       image: p.image,
       isGuest: p.isGuest,
+      isSpectator: p.isSpectator,
       isHost: p.key === room.hostKey,
     })),
   };
 }
 
+export function validateRoomCreator(host: Identity): ErrorCode | undefined {
+  return host.isGuest ? "guestCannotCreateRoom" : undefined;
+}
+
+export function parseHostRole(value: FormDataEntryValue | null): "participant" | "spectator" | null {
+  return value === "participant" || value === "spectator" ? value : null;
+}
+
 /** LOBBY-01 : crée une salle dont `host` devient l'hôte. Retourne son code. */
-export async function createRoom(store: RoomStore, host: Identity): Promise<string> {
+export async function createRoom(store: RoomStore, host: Identity, isSpectator = false): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = await generateUniqueRoomCode((c) => store.isCodeTaken(c));
     try {
-      await store.createRoom(code, host);
+      await store.createRoom(code, host, isSpectator);
       return code;
     } catch (error) {
       // Code pris entre la vérification et la création : on en tire un autre.

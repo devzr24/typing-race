@@ -12,7 +12,7 @@ const initialState: RoomFormState = {};
 
 function LoginHint({ state }: { state: RoomFormState }) {
   const { m } = useI18n();
-  if (state.error !== "loginRequired") return null;
+  if (state.error !== "loginRequired" && state.error !== "guestCannotCreateRoom") return null;
   return (
     <Link href="/login" className="text-sm underline">
       {m.home.goToLogin}
@@ -20,13 +20,31 @@ function LoginHint({ state }: { state: RoomFormState }) {
   );
 }
 
-export function CreateRoomForm() {
+export function CreateRoomForm({ canCreate }: { canCreate: boolean }) {
   const { m } = useI18n();
   const [state, action, pending] = useActionState(createRoomAction, initialState);
+  if (!canCreate) {
+    return (
+      <p className="text-sm text-mist">
+        {m.home.accountRequired} <Link href="/login" className="underline">{m.home.goToLogin}</Link>
+      </p>
+    );
+  }
   return (
     <form action={action} className="flex flex-col gap-3">
       <FormError message={state.error && errorText(m, state.error)} />
       <LoginHint state={state} />
+      <fieldset className="flex flex-col gap-2" disabled={pending}>
+        <legend>{m.home.hostRole}</legend>
+        <label className="flex items-center gap-2">
+          <input type="radio" name="role" value="participant" defaultChecked />
+          {m.home.participant}
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="radio" name="role" value="spectator" />
+          {m.home.spectatorOnly}
+        </label>
+      </fieldset>
       <button type="submit" className={heroButtonClass} disabled={pending}>
         {pending ? m.home.creating : m.home.createRoom}
       </button>
