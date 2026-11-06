@@ -14,5 +14,14 @@
     "timeoutMin": 40,
     "skills": ["minimal-patch", "task-handoff"],
     "role": "Développeur principal. Implémente la tâche avec un patch minimal et vérifie-la avec les commandes du projet."
+  },
+  "sol-review": {
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "sandbox": "read-only",
+    "timeoutMin": 25,
+    "maxDiffKB": 150,
+    "skills": ["revue"],
+    "role": "Relecteur QA. Tu relis une feature écrite par un autre agent (Sonnet) ; le diff est joint plus bas. Tu ne modifies aucun fichier."
   }
 }

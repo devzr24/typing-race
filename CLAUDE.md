@@ -86,6 +86,7 @@ explicitement demandée par le checkpoint, on ne la code pas, même partiellemen
 - `npm test` — Vitest.
 - `npm run test:e2e` — Playwright.
 - `npx tsx .claude/scripts/delegate.ts <luna|sol> <brief.md>` — délègue une tâche à Codex ;
+  `… delegate.ts sol-review <brief.md> --diff <commit>` fait relire par Sol le code écrit par Sonnet ;
   `… delegate.ts quota` affiche le quota Codex restant.
 
 ## Déploiement (Railway)

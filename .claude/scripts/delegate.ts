@@ -2,6 +2,7 @@
 // N'imprime que le compte rendu final de l'agent, pour ne pas remplir le contexte de l'orchestrateur.
 //
 //   npx tsx .claude/scripts/delegate.ts <luna|sol> <brief.md|-> [--skills a,b] [--effort niveau] [--dry-run]
+//   npx tsx .claude/scripts/delegate.ts sol-review <brief.md|-> --diff <commit de départ>   (relecture, lecture seule)
 //   npx tsx .claude/scripts/delegate.ts quota
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import fs from "node:fs";
@@ -15,6 +16,7 @@ interface AgentConfig {
   timeoutMin: number;
   skills: string[];
   role: string;
+  maxDiffKB?: number;
 }
 
 interface RateWindow {
@@ -114,6 +116,27 @@ function runCodex(name: string, agent: AgentConfig, prompt: string, effort: stri
   console.log(text);
 }
 
+function git(args: string[]): string | null {
+  const r = spawnSync("git", args, { cwd: CWD, encoding: "utf8", maxBuffer: 256 << 20, windowsHide: true });
+  return r.status === 0 ? r.stdout.trim() : null;
+}
+
+// Diff de la feature depuis son commit de départ, joint au prompt : le relecteur n'a pas à lancer git.
+function featureDiff(base: string, maxKB: number): string {
+  const diff = git(["diff", base]);
+  if (diff === null) die(`git diff ${base} a échoué : commit de départ inconnu ?`);
+  const stat = git(["diff", "--stat", base]) ?? "";
+  const untracked = git(["ls-files", "--others", "--exclude-standard"]) ?? "";
+  const kb = Buffer.byteLength(diff, "utf8") / 1024;
+  let out = "## Fichiers modifiés\n```text\n" + (stat || "(aucune modification suivie)") + "\n```\n\n";
+  out +=
+    kb > maxKB
+      ? `## Diff omis\nDiff trop volumineux (${Math.ceil(kb)} Ko) : lis directement les fichiers listés utiles au brief.`
+      : "## Diff\n```diff\n" + (diff || "(aucune modification suivie)") + "\n```";
+  if (untracked) out += "\n\n## Nouveaux fichiers non suivis (à lire directement)\n" + untracked.split("\n").map((f) => `- ${f}`).join("\n");
+  return out;
+}
+
 function takeValue(rest: string[], i: number, flag: string): string {
   const value = rest[i + 1];
   if (!value || value.startsWith("--")) die(`Valeur requise pour ${flag}`);
@@ -127,16 +150,21 @@ function delegate(argv: string[]): void {
   );
   const agent = agents[name];
   if (!agent || !briefArg) {
-    die(`Usage : delegate.ts <${Object.keys(agents).join("|")}> <brief.md|-> [--skills a,b] [--effort niveau] [--dry-run]`);
+    die(
+      `Usage : delegate.ts <${Object.keys(agents).join("|")}> <brief.md|-> ` +
+        "[--skills a,b] [--effort niveau] [--diff <commit de départ>] [--dry-run]",
+    );
   }
 
   const skills = [...agent.skills];
   let effort = agent.effort;
+  let diffBase: string | undefined;
   let dryRun = false;
   for (let i = 0; i < rest.length; i++) {
     const flag = rest[i];
     if (flag === "--skills") skills.push(...takeValue(rest, i++, flag).split(",").map((s) => s.trim()).filter(Boolean));
     else if (flag === "--effort") effort = takeValue(rest, i++, flag);
+    else if (flag === "--diff") diffBase = takeValue(rest, i++, flag);
     else if (flag === "--dry-run") dryRun = true;
     else die(`Option inconnue : ${flag}`);
   }
@@ -154,6 +182,7 @@ function delegate(argv: string[]): void {
     ...[...new Set(skills)].map((s) => `# Skill : ${s}\n${skillText(s)}`),
     `# Brief\n${brief.trim()}`,
   ];
+  if (diffBase) parts.push(`# Diff de la feature (depuis ${diffBase})\n${featureDiff(diffBase, agent.maxDiffKB ?? 150)}`);
   const prompt = parts.join("\n\n") + "\n";
 
   if (dryRun) {

@@ -1,6 +1,6 @@
 ---
 name: sonnet-dev
-description: Développeur Sonnet (effort medium), en renfort de Sol. Tâches très délicates ou fortement liées sur plusieurs fichiers, reprise d'un échec de Sol, quota Codex épuisé.
+description: Développeur Sonnet (effort medium), en renfort de Sol. Tâches très délicates ou fortement liées sur plusieurs fichiers, reprise d'un échec de Sol, quota Codex épuisé. Son code est relu par Sol (relecture croisée).
 model: sonnet
 effort: medium
 skills:
