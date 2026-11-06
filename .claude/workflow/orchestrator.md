@@ -57,7 +57,7 @@ Qui : deux Sol tant que le quota Codex le permet (c'est aussi la façon la plus 
 
 Comment :
 1. Un brief par agent, avec la liste des fichiers qu'il possède et l'interdiction de toucher aux autres.
-2. Lancer les deux en arrière-plan (`delegate.ts sol` avec `run_in_background`, ou `sonnet-dev` en arrière-plan), dans le même dossier : pas de worktree, les agents ne commitent pas.
+2. Lancer les deux en arrière-plan (`delegate.ts sol` avec `run_in_background`, ou `sonnet-dev` en arrière-plan), dans le même dossier et sur la même branche : pas de worktree, les agents ne commitent pas. Deux features distinctes ont deux branches : on les enchaîne au lieu de les paralléliser.
 3. Attendre les deux comptes rendus, puis vérifier une seule fois l'ensemble (skill `verification`) et contrôler avec `git diff --stat` que chacun est resté dans ses fichiers. Jamais de vérification pendant qu'un agent écrit encore.
 4. La relecture croisée reste unique, sur la feature complète.
 
@@ -82,4 +82,4 @@ L'utilisateur veut épuiser le quota de Sol en premier : Sol développe tout ce 
 - Pas de double travail : une implémentation qui passe la vérification n'est pas refaite.
 - Les agents rendent des comptes rendus courts ; tu ne suis pas leur détail.
 - Constat simple du relecteur → l'auteur corrige. Constat complexe → tu décides de l'escalade.
-- Les agents ne commitent jamais. Les commits suivent CLAUDE.md : sur `master`, Conventional Commits en français, `git status` montré avant ; push seulement sur demande de l'utilisateur.
+- Les agents ne commitent jamais. Les commits suivent CLAUDE.md : sur la branche de la feature (jamais sur `master`), Conventional Commits en français, `git status` montré avant ; push seulement sur demande de l'utilisateur.
