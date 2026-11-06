@@ -8,10 +8,10 @@ Classer d'après le volume de code, le nombre de fichiers, le risque (auth, donn
 
 | Classe | Exemples | Pipeline | QA | Relecture |
 |---|---|---|---|---|
-| TINY | texte i18n, constante, import, renommage local | Opus lui-même → vérification (Luna si nombreuses micro-tâches mécaniques regroupées) | non | non |
+| TINY | texte i18n, constante, import, renommage local | Opus lui-même → vérification (Sol si nombreuses micro-tâches mécaniques regroupées) | non | non |
 | SMALL | bug localisé, petite fonction, petit composant | Sol → vérification | non | non |
 | MEDIUM | feature ciblée, modification significative | (researcher) → Sol → vérification → relecture croisée | non | oui, une fois, sur la feature complète |
-| LARGE | volumineuse, multi-fichiers liés, risquée | researcher → plan en lots → Sol par lot (Sonnet si très délicat) → vérification par lot → QA → relecture croisée → corrections | oui, feature terminée | oui, une fois |
+| LARGE | volumineuse, multi-fichiers liés, risquée | researcher → plan en lots → Sol par lot (effort high si très délicat) → vérification par lot → QA → relecture croisée → corrections | oui, feature terminée | oui, une fois |
 
 Relecture croisée : code de Sol ou Luna → `reviewer` (Sonnet) ; code de Sonnet → `delegate.ts sol-review --diff <commit>`.
 

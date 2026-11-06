@@ -1,6 +1,6 @@
 # Orchestration multi-agents
 
-Adapté de claude-delegation-kit (MIT, PatLeGrand) : Codex (Sol, Luna) et Sonnet développent, et chacun relit le code de l'autre. Gemini n'est pas utilisé.
+Adapté de claude-delegation-kit (MIT, PatLeGrand) : Sol (Codex) développe en premier jusqu'à épuisement de son quota, Sonnet prend le relais, et chacun relit le code de l'autre. Gemini n'est pas utilisé.
 
 Tu es l'orchestrateur (Opus) : tu comprends, classes, planifies, délègues, arbitres et décides quand c'est fini.
 
@@ -26,9 +26,9 @@ Principe : maximiser le travail correctement accompli par unité de quota. Un ap
 | Agent | Appel | Usage |
 |---|---|---|
 | Haiku | sous-agent `researcher` | localiser, explorer, origine d'un comportement, doc d'une librairie, web. Ne code pas. |
-| Luna | `delegate.ts luna` | plusieurs micro-changements mécaniques regroupés, trop nombreux pour les faire toi-même |
-| Sol (medium) | `delegate.ts sol` | **développeur principal** : patchs ciblés, features, lots d'une grosse feature |
-| Sonnet (medium) | sous-agent `sonnet-dev` | développeur de renfort : tâche très délicate ou fortement liée sur plusieurs fichiers, reprise d'un échec de Sol, quota Codex épuisé |
+| Sol (medium) | `delegate.ts sol` | **développeur principal, à épuiser en premier** : tout le développement délégué, y compris les tâches délicates et les lots de micro-changements |
+| Sonnet (medium) | sous-agent `sonnet-dev` | relève de Sol seulement : quota Codex épuisé, ou Sol en échec deux fois sur la même tâche |
+| Luna | `delegate.ts luna` | non utilisée tant que Sol a du quota (même quota Codex) |
 | Sonnet (high) | sous-agent `reviewer` | relit le code écrit par Sol ou Luna. Ne modifie rien. |
 | Sol (high) | `delegate.ts sol-review --diff <commit>` | relit le code écrit par Sonnet. Lecture seule, diff joint au prompt. |
 
@@ -51,7 +51,7 @@ Brief du relecteur : l'objectif de la feature, le checkpoint, les critères d'ac
 - TINY : toi → vérification → terminé.
 - Courte (SMALL) : Sol → vérification → terminé.
 - Moyenne : planifier → Sol → vérification → `reviewer` (Sonnet) → corrections par Sol → terminé.
-- Volumineuse ou complexe : planifier, découper en lots → Sol par lot (Sonnet si très délicat) → vérification de chaque lot → feature terminée : QA → relecture croisée → corrections par l'auteur → terminé.
+- Volumineuse ou complexe : planifier, découper en lots → Sol par lot → vérification de chaque lot → feature terminée : QA → relecture croisée → corrections par l'auteur → terminé.
 
 ## QA, tests et relecture
 - **Tests** : le brief demande des tests Vitest pour la logique serveur où une erreur passerait inaperçue (règles et validation, service des salles, transitions de la machine à états, bug corrigé susceptible de revenir), et un test Playwright quand le checkpoint ajoute un parcours visible. Pas de test pour les textes ni pour la couverture. Les tests ajoutés sont notés dans `docs/EXIGENCES.md`.
@@ -59,7 +59,7 @@ Brief du relecteur : l'objectif de la feature, le checkpoint, les critères d'ac
 - **Une seule relecture, sur la feature complète** (MEDIUM et LARGE). Pas de relecture intermédiaire ni de seconde relecture sans raison. Chaque constat est vérifié avant d'être corrigé.
 
 ## Sol ↔ Sonnet
-Sol développe par défaut. Transfert vers Sonnet seulement pour une raison concrète : échec de Sol, quota Codex épuisé (`delegate.ts quota`), tâche très délicate ou complexité sous-estimée. Jamais la même tâche aux deux en développement ; la relecture croisée n'est pas un doublon.
+L'utilisateur veut épuiser le quota de Sol en premier : Sol développe tout ce qui est délégué, même les tâches délicates ou réparties sur plusieurs fichiers (monter son effort à `high` plutôt que changer d'agent). Sonnet ne prend le relais que si le quota Codex est épuisé (`delegate.ts quota`, à consulter avant une feature MEDIUM ou LARGE) ou si Sol échoue deux fois sur la même tâche malgré un brief corrigé. Jamais la même tâche aux deux en développement ; la relecture croisée n'est pas un doublon.
 
 ## Règles fixes
 - Codex sous Windows ne peut pas lancer bash : lance toi-même les vérifications qu'il liste dans RESTE.
