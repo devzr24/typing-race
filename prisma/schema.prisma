@@ -9,6 +9,37 @@ datasource db {
   provider = "postgresql"
 }
 
+// Langue du corpus de textes et de mots.
+enum TextLanguage {
+  FR
+  EN
+}
+
+// Extrait littéraire conservé avec sa ponctuation et son attribution.
+model Passage {
+  id        String       @id @default(cuid())
+  /// Identifiant stable de l'extrait pour les chargements successifs.
+  slug      String       @unique
+  language  TextLanguage
+  title     String
+  author    String
+  content   String
+  /// Nombre de mots séparés par des espaces (apostrophes et traits d'union conservés).
+  wordCount Int
+  createdAt DateTime     @default(now())
+}
+
+// Mot courant ; le rang 1 correspond au mot le plus fréquent de sa langue.
+model Word {
+  id            String       @id @default(cuid())
+  language      TextLanguage
+  value         String
+  frequencyRank Int
+
+  @@unique([language, value])
+  @@index([language, frequencyRank])
+}
+
 // Utilisateur inscrit (GitHub, Discord ou nom d'utilisateur + mot de passe).
 // Aucun courriel n'est stocké (voir ADR 0004). Les invités ne sont pas en base.
 model User {

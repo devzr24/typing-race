@@ -13,3 +13,16 @@ export function runMigrations(): void {
     shell: process.platform === "win32",
   });
 }
+
+/** Charge le corpus et les comptes de démonstration ; journalise un échec sans arrêter le démarrage. */
+export function runSeed(): void {
+  console.log("> Chargement du corpus Prisma…");
+  try {
+    execFileSync("npx", ["prisma", "db", "seed"], {
+      stdio: "pipe",
+      shell: process.platform === "win32",
+    });
+  } catch {
+    console.error("Échec du chargement du corpus Prisma ; le démarrage continue.");
+  }
+}
