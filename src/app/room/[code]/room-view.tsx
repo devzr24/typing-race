@@ -8,13 +8,16 @@ import { io, type Socket } from "socket.io-client";
 import { Avatar } from "@/components/avatar";
 import { useFeedback } from "@/components/effects";
 import { DecodedCode, useEffectsEnabled } from "@/components/motion-effects";
-import { buttonClass } from "@/components/form-field";
+import { buttonClass, primaryButtonClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
 import type { ErrorCode } from "@/i18n/messages";
 import { leaveRoomAction } from "@/lib/rooms/actions";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/events";
 import type { PublicParticipant, PublicRoom } from "@/lib/rooms/types";
+import type { HostCommand } from "@/lib/rooms/schemas";
+import { launchError } from "@/lib/rooms/state-machine";
+import { RaceCountdown, RoomConfiguration } from "./room-configuration";
 
 type ConnectionState = "connecting" | "live" | "reconnecting";
 
@@ -23,12 +26,16 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const [room, setRoom] = useState<PublicRoom | null>(initialRoom);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<ErrorCode | null>(null);
+  const [actionError, setActionError] = useState<ErrorCode | null>(null);
+  const [pending, setPending] = useState(false);
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const code = initialRoom.code;
   const { play } = useFeedback();
   const participantCount = useRef(initialRoom.participants.length);
 
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
+    socketRef.current = socket;
 
     // À chaque (re)connexion, on se réabonne à la salle : la place est conservée côté serveur.
     socket.on("connect", () => {
@@ -54,9 +61,22 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     });
 
     return () => {
+      socketRef.current = null;
       socket.disconnect();
     };
   }, [code, selfId, play]);
+
+  function command(command: HostCommand) {
+    const socket = socketRef.current;
+    if (!socket?.connected) return setActionError("serverError");
+    setPending(true);
+    setActionError(null);
+    socket.timeout(10000).emit("room:command", { code, command }, (error, response) => {
+      setPending(false);
+      if (error || !response) setActionError("serverError");
+      else if (!response.ok) setActionError(response.error);
+    });
+  }
 
   if (error || !room) {
     return (
@@ -69,6 +89,10 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       </>
     );
   }
+
+  const isHost = room.participants.some((p) => p.id === selfId && p.isHost);
+  const canConfigure = room.status === "EN_ATTENTE" || room.status === "RESULTATS";
+  const startError = launchError(room);
 
   return (
     <>
@@ -99,6 +123,30 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           </AnimatePresence>
         </ul>
       </section>
+
+      {actionError ? <p role="alert" className="text-alert">{errorText(m, actionError)}</p> : null}
+      <RoomConfiguration key={JSON.stringify(room.config)} room={room} editable={isHost && canConfigure && !pending && connection === "live"} command={command} />
+      <ul className="flex flex-col gap-2">
+        {room.bots.map((bot) => (
+          <li key={bot.id} className="flex items-center gap-3 rounded border border-line bg-card px-3 py-2">
+            <span>{bot.name}</span>
+            <span className="rounded border border-cyan px-2 text-sm text-cyan">{m.room.bot}</span>
+            <span>{m.room.botLevels[bot.level]}</span>
+            {isHost && canConfigure ? <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "removeBot", id: bot.id })}>{m.room.removeBot}</button> : null}
+          </li>
+        ))}
+      </ul>
+      {room.status === "DECOMPTE" && room.race ? <RaceCountdown key={room.race.startsAt} startsAt={room.race.startsAt} serverNow={room.serverNow} /> : null}
+      {room.status === "EN_COURSE" && room.race ? <section aria-label={m.room.raceText} className="whitespace-pre-wrap rounded border border-line bg-card p-4">{room.race.text}</section> : null}
+      {room.status === "RESULTATS" ? <h2 className="text-lg font-medium">{m.room.results}</h2> : null}
+      {isHost ? <div className="flex flex-wrap gap-3">
+        {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
+          <button className={primaryButtonClass} disabled={!!startError || pending || connection !== "live"} aria-describedby={startError ? "start-reason" : undefined} onClick={() => command({ type: "start" })}>{m.room.start}</button>
+          {startError ? <p id="start-reason" className="text-sm text-mist">{errorText(m, startError)}</p> : null}
+        </div> : null}
+        {room.status === "RESULTATS" ? <button className={primaryButtonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "reset" })}>{m.room.newRace}</button> : null}
+        <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "close" })}>{m.room.close}</button>
+      </div> : null}
 
       <form action={leaveRoomAction}>
         <input type="hidden" name="code" value={room.code} />

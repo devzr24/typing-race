@@ -15,12 +15,45 @@ export type Participant = Identity & {
   joinedAt: Date;
 };
 
+export type RaceConfig = {
+  timeLimitSec: number | null;
+  textLanguage: "FR" | "EN";
+  textType: "COHERENT" | "ALEATOIRE";
+  wordCount: number;
+  complexity: "FACILE" | "MOYEN" | "DIFFICILE";
+  punctuation: boolean;
+  numbers: boolean;
+  capitals: boolean;
+  accents: boolean;
+  includeChars: string;
+  excludeChars: string;
+  errorMode: "CORRECTION" | "LIBRE";
+  bonusesEnabled: boolean;
+};
+
+export const defaultRaceConfig: RaceConfig = {
+  timeLimitSec: null, textLanguage: "FR", textType: "COHERENT", wordCount: 30,
+  complexity: "MOYEN", punctuation: true, numbers: false, capitals: true,
+  accents: true, includeChars: "", excludeChars: "", errorMode: "CORRECTION", bonusesEnabled: true,
+};
+
+export type RoomBot = {
+  id: string;
+  name: string;
+  level: "NOOB" | "BEGINNER" | "INTERMEDIATE" | "EXPERT" | "IMPOSSIBLE";
+};
+
+export type Race = { text: string; startsAt: number };
+
 export type Room = {
   code: string;
   status: RoomStatus;
   hostKey: string;
   createdAt: Date;
   participants: Participant[];
+  capacity: number;
+  config: RaceConfig;
+  bots: RoomBot[];
 };
 
 /** Ce qu'on envoie aux navigateurs : pas d'identifiant de session. */
@@ -37,4 +70,8 @@ export type PublicRoom = {
   code: string;
   status: RoomStatus;
   participants: PublicParticipant[];
+  config: RaceConfig;
+  bots: RoomBot[];
+  race: Race | null;
+  serverNow: number;
 };
