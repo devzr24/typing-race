@@ -191,7 +191,7 @@ Mise à jour : 2026-11-06.
 |---|---|---|
 | Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race. Accès de l'enseignant à confirmer ; commits à poursuivre régulièrement. |
 | URL de production | complet | https://typing-race-production-4a76.up.railway.app |
-| `README.md` | partiel | Manque : captures d'écran, PostgreSQL via Docker Compose, compte de démonstration. |
+| `README.md` | partiel | PostgreSQL via Docker Compose (`docker-compose.yml`). Manque : captures d'écran, compte de démonstration. |
 | `docs/ARCHITECTURE.md` | partiel | Version initiale : vue d'ensemble, modèle de données, machine à états, ADR temps réel, flux temps réel actuels et prévus, approche prévue pour les bots. Manque pour la remise finale : ADR sur les bots, flux de course réels. |
 | `docs/EXIGENCES.md` | complet | Ce fichier. |
 | `docs/DEMARCHE-CREATIVE.md` | non fait | Voir DES-01 à DES-03. |
