@@ -45,7 +45,7 @@ Mise à jour : 2026-11-06.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| AUTH-01 | complet | `src/auth.ts`, `src/app/login/`, `src/app/register/`, `src/lib/auth/` | `src/lib/auth/username.test.ts`, `src/lib/auth/password.test.ts` | GitHub, Discord, et nom d'utilisateur + mot de passe (ADR 0004, 0005). Parcours OAuth vérifié manuellement. |
+| AUTH-01 | complet | `src/auth.ts`, `src/app/login/`, `src/app/register/`, `src/lib/auth/` | `src/lib/auth/username.test.ts`, `src/lib/auth/password.test.ts`, `src/lib/auth/account-linking.test.ts`, `src/lib/auth/auth.test.ts` | GitHub, Discord, et nom d'utilisateur + mot de passe (ADR 0004, 0005). Parcours OAuth vérifié manuellement. Un compte GitHub/Discord n'est jamais relié à une session déjà ouverte ; `/login` et `/register` redirigent une personne connectée (ADR 0012). |
 | AUTH-02 | partiel | `src/auth.ts` (fournisseur `guest`), `src/lib/auth/guest.ts`, `src/app/login/login-forms.tsx` | `e2e/room.spec.ts` | Session d'invité dans le cookie signé d'Auth.js. **Écarts** : le pseudo est facultatif (généré si vide) et limité à 3–24 caractères au lieu de 3–20. |
 | AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` (un invité ne peut pas créer de salle) | Un invité ne peut pas créer de salle : refus côté serveur et lien vers la connexion à la place du formulaire. Pas de photo pour l'invité ; avatar = initiale du nom. **Partiel** : l'historique n'existe pas encore (HIST-01), la règle « pas d'historique pour l'invité » reste à appliquer. |
 | AUTH-04 | non fait | — | — | Seule la photo fournie par GitHub/Discord est affichée ; pas de téléversement. |
@@ -156,7 +156,7 @@ Mise à jour : 2026-11-06.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| TEST-01 | partiel | `src/**/*.test.ts` | 87 tests unitaires (10 fichiers) | Couvre l'authentification, les codes, le service de salles, la configuration serveur, la langue. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
+| TEST-01 | partiel | `src/**/*.test.ts` | 120 tests unitaires (16 fichiers) | Couvre l'authentification (dont limitation des tentatives et refus de liaison OAuth), les codes, le service de salles, la configuration serveur, la langue. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
 | TEST-02 | partiel | `e2e/room.spec.ts`, `playwright.config.ts` | 5 tests de bout en bout | Inscription puis création de salle, arrivée et départ en direct, refus de création pour un invité, code inexistant, langue et thème. |
 | TEST-03 | partiel | `e2e/room.spec.ts` | — | Aucun test n'utilise OAuth. L'hôte s'inscrit avec un nom d'utilisateur + mot de passe ; le joueur qui rejoint est un invité. |
 
@@ -183,7 +183,7 @@ Mise à jour : 2026-11-06.
 |---|---|---|---|---|
 | SEC-01 | non fait | — | — | Aucune action réservée à l'hôte n'existe encore (lancer, configurer, liens, expulser, fermer). |
 | SEC-02 | non fait | — | — | Pas de téléversement (voir AUTH-04). |
-| SEC-03 | complet | `src/lib/auth/password.ts` | `src/lib/auth/password.test.ts` | scrypt avec sel aléatoire, comparaison à temps constant, hachage factice pour les noms inconnus ; aucun mot de passe journalisé. |
+| SEC-03 | complet | `src/lib/auth/password.ts`, `src/lib/auth/rate-limit.ts`, `src/auth.ts` | `src/lib/auth/password.test.ts`, `src/lib/auth/password-concurrency.test.ts`, `src/lib/auth/rate-limit.test.ts`, `src/lib/auth/actions.test.ts` | scrypt avec sel aléatoire, comparaison à temps constant, hachage factice pour les noms inconnus ; aucun mot de passe journalisé. Limitation des tentatives (connexion par IP et par nom, inscription par IP) et plafond de 2 hachages simultanés (ADR 0012). |
 
 ## Livrables de la remise finale (section 8)
 
