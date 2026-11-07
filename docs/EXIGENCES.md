@@ -10,9 +10,9 @@ Mise à jour : 2026-11-07.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 16 |
-| Partiel | 30 |
-| Non fait | 44 |
+| Complet | 26 |
+| Partiel | 34 |
+| Non fait | 30 |
 | **Total** | **90** |
 
 ## 3. Contraintes techniques
@@ -79,26 +79,26 @@ Mise à jour : 2026-11-07.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| CONF-01 | non fait | — | — | — |
-| CONF-02 | non fait | — | — | — |
-| CONF-03 | non fait | — | — | — |
-| CONF-04 | non fait | — | — | — |
-| CONF-05 | non fait | — | — | Critères de complexité à définir et documenter. |
-| CONF-06 | non fait | — | — | — |
-| CONF-07 | non fait | — | — | Comportement en mode cohérent à choisir et documenter. |
-| CONF-08 | non fait | — | — | — |
-| CONF-09 | non fait | — | — | — |
-| CONF-10 | non fait | — | — | — |
+| CONF-01 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Aucun temps maximal ou de 30 à 600 s (Zod) ; à la fin du temps, la salle passe en RESULTATS. |
+| CONF-02 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/text/load.ts` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Français ou anglais, indépendant de la langue de l'interface. |
+| CONF-03 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/text/generate.ts`, `src/lib/text/complexity.ts`, `src/lib/text/load.ts`, `docs/adr/0016-generation-du-texte.md` | `src/lib/text/generate.test.ts`, `src/lib/text/load.test.ts` | Cohérent : passages du corpus en base (`Passage`) ; aléatoire : mots du dictionnaire en base (`Word`). |
+| CONF-04 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/text/generate.ts` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts`, `src/lib/text/generate.test.ts`, `src/lib/text/load.test.ts` | De 10 à 200 mots ; le texte contient exactement ce nombre de mots. |
+| CONF-05 | complet | `src/lib/text/generate.ts`, `src/lib/text/complexity.ts`, `src/lib/text/load.ts`, `docs/adr/0016-generation-du-texte.md` | `src/lib/text/generate.test.ts`, `src/lib/text/load.test.ts` | Critères chiffrés (ADR 0016). Aléatoire : facile = rang de fréquence ≤ 300 et ≤ 6 lettres, moyen = rang ≤ 700 et ≤ 9 lettres, difficile = tout le dictionnaire, ≥ 4 lettres, tirage pondéré vers les mots longs et rares. Cohérent : score de passage (longueur moyenne des mots, part de caractères non alphabétiques) avec seuils par langue, au moins 2 passages par niveau (vérifié par test). |
+| CONF-06 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/text/generate.ts` | `src/lib/text/generate.test.ts`, `src/lib/text/load.test.ts` | Ponctuation, nombres, majuscules et accents (français) activables ; appliqués aux deux modes (insertion en aléatoire, retrait en cohérent). |
+| CONF-07 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/text/generate.ts`, `docs/adr/0016-generation-du-texte.md` | `src/lib/text/generate.test.ts`, `src/lib/text/load.test.ts` | Texte aléatoire : aucun mot ne contient un caractère exclu ; chaque mot contient au moins un caractère inclus (casse et accents ignorés) ; moins de 20 mots candidats → erreur affichée à l'hôte. Mode cohérent : option ignorée (comportement documenté, ADR 0016). |
+| CONF-08 | partiel | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Mode correction obligatoire ou libre choisi par l'hôte et diffusé. **Manque** : application à la frappe (zone de frappe, COURSE-04). |
+| CONF-09 | partiel | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Bonus activés ou non, choisis par l'hôte et diffusés. **Manque** : application pendant la course (BONUS-01). |
+| CONF-10 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/rooms/prisma-store.ts` (`RoomBot`) | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | L'hôte ajoute un bot avec son niveau (nom généré côté serveur, refus si la capacité est atteinte) ou le retire ; bots listés avec un badge et leur niveau. |
 | CONF-11 | non fait | — | — | Dépend de SALLE-03 et SALLE-05. |
-| CONF-12 | non fait | — | — | — |
+| CONF-12 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/server/room-socket.ts` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Configuration et bots diffusés à toute la salle par `room:update` à chaque changement ; formulaire en lecture seule pour les non-hôtes. Modifiable seulement en attente ou sur les résultats. |
 
 ## 5.6 Déroulement d'une course
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| COURSE-01 | partiel | `docs/ARCHITECTURE.md`, `docs/architecture/machine-a-etats.md`, `prisma/schema.prisma` (`RoomStatus`) | — | Machine à états documentée avec les états de l'énoncé (`EN_ATTENTE → DECOMPTE → EN_COURSE → RESULTATS → EN_ATTENTE \| FERMEE`). L'énumération ne contient que `EN_ATTENTE`, `EN_COURSE`, `TERMINEE` ; seul `EN_ATTENTE` est utilisé. **Manque** : `DECOMPTE`, `RESULTATS`, `FERMEE` et les transitions. |
-| COURSE-02 | non fait | — | — | — |
-| COURSE-03 | non fait | — | — | — |
+| COURSE-01 | partiel | `src/lib/rooms/state-machine.ts`, `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `docs/architecture/machine-a-etats.md` | `src/lib/rooms/state-machine.test.ts`, `src/lib/rooms/race.test.ts` | Les cinq états et leurs transitions sont appliqués côté serveur, transitions invalides refusées ; décompte de 3 s par minuterie serveur ; au redémarrage, les salles en décompte ou en course reviennent en attente (texte et minuteries en mémoire). **Manque** : passage EN_COURSE → RESULTATS quand tous ont fini ou abandonné (moteur de course) ; aujourd'hui seulement à la fin du temps maximal. |
+| COURSE-02 | complet | `src/lib/rooms/state-machine.ts`, `src/lib/rooms/service.ts`, `src/server/room-socket.ts` | `src/lib/rooms/state-machine.test.ts`, `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Lancement par l'hôte seulement si au moins 2 participants non spectateurs, bots compris, dont au moins 1 humain ; bouton désactivé avec la raison sinon. |
+| COURSE-03 | partiel | `src/lib/rooms/state-machine.ts`, `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `src/app/room/[code]/room-view.tsx` | `src/lib/rooms/state-machine.test.ts`, `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Texte généré au lancement et envoyé seulement au début du décompte, avec l'instant de départ du serveur (`startsAt`) : 3-2-1 synchronisé chez tous. **Manque** : départ effectif de la frappe (moteur de course). |
 | COURSE-04 | non fait | — | — | — |
 | COURSE-05 | non fait | — | — | — |
 | COURSE-06 | partiel | `src/lib/race/metrics.ts`, `src/lib/race/ranking.ts` | `src/lib/race/metrics.test.ts`, `src/lib/race/ranking.test.ts` | Calculs serveur prêts : MPM net et brut, précision et progression mesurés avec le temps de course du serveur (`raceElapsedMs`), contrôle de vraisemblance d'une progression (`isPlausibleProgress`). **Manque** : serveur de course qui détient le départ, la fin, la progression et le classement. |
@@ -181,7 +181,7 @@ Mise à jour : 2026-11-07.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| SEC-01 | non fait | — | — | Aucune action réservée à l'hôte n'existe encore (lancer, configurer, liens, expulser, fermer). |
+| SEC-01 | partiel | `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `src/lib/rooms/schemas.ts` | `src/lib/rooms/race.test.ts` | Lancer, configurer, ajouter ou retirer un bot, nouvelle course et fermer : session relue côté serveur, hôte vérifié sous verrou, état de la salle vérifié, commandes validées par Zod. **Manque** : liens d'invitation et expulsion (SALLE-04, SALLE-07). |
 | SEC-02 | non fait | — | — | Pas de téléversement (voir AUTH-04). |
 | SEC-03 | complet | `src/lib/auth/password.ts`, `src/lib/auth/rate-limit.ts`, `src/auth.ts` | `src/lib/auth/password.test.ts`, `src/lib/auth/password-concurrency.test.ts`, `src/lib/auth/rate-limit.test.ts`, `src/lib/auth/actions.test.ts` | scrypt avec sel aléatoire, comparaison à temps constant, hachage factice pour les noms inconnus ; aucun mot de passe journalisé. Limitation des tentatives (connexion par IP et par nom, inscription par IP) et plafond de 2 hachages simultanés (ADR 0012). |
 
