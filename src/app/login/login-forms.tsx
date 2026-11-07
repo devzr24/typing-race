@@ -66,11 +66,14 @@ export function GuestForm() {
 const OAUTH_ERRORS: Record<string, ErrorCode> = {
   AccessDenied: "oauthAccessDenied",
   Configuration: "oauthConfiguration",
+  OAuthAccountNotLinked: "oauthAlreadySignedIn",
 };
 
 export function OAuthErrorMessage() {
   const { m } = useI18n();
   const code = useSearchParams().get("error");
   if (!code || code === "CredentialsSignin") return null;
-  return <FormError message={errorText(m, OAUTH_ERRORS[code] ?? "oauthFailed")} />;
+  // Object.hasOwn : « ?error=constructor » ne doit pas lire une propriété héritée d'Object.
+  const errorCode = Object.hasOwn(OAUTH_ERRORS, code) ? OAUTH_ERRORS[code] : "oauthFailed";
+  return <FormError message={errorText(m, errorCode)} />;
 }
