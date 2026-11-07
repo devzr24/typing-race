@@ -4,14 +4,14 @@ Identifiants : ceux de l'énoncé « Web V — Travail de session ».
 Statut : **complet**, **partiel** (une partie livrée, le reste à faire), **non fait**.
 Tests : `*.test.ts` = tests unitaires (Vitest) ; `e2e/…` = tests de bout en bout (Playwright).
 
-Mise à jour : 2026-11-06.
+Mise à jour : 2026-11-07.
 
 ## Bilan
 
 | Statut | Nombre |
 |---|---|
-| Complet | 13 |
-| Partiel | 22 |
+| Complet | 14 |
+| Partiel | 21 |
 | Non fait | 55 |
 | **Total** | **90** |
 
@@ -149,7 +149,7 @@ Mise à jour : 2026-11-06.
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
 | I18N-01 | complet | `src/i18n/messages/fr.ts`, `src/i18n/messages/en.ts` | `src/i18n/messages.test.ts` | Libellés, erreurs (codes `ErrorCode`) et métadonnées des pages (`generateMetadata`) en FR et EN (ADR 0009). |
-| I18N-02 | partiel | `src/components/preferences.tsx`, `src/i18n/server.ts` | `e2e/room.spec.ts` (langue et thème) | Sélecteur dans l'en-tête de toutes les pages, choix conservé dans un cookie. **Écart** : sans cookie, le français est utilisé au lieu de la langue du navigateur (`Accept-Language`). |
+| I18N-02 | complet | `src/components/preferences.tsx`, `src/i18n/server.ts`, `src/i18n/accept-language.ts` | `src/i18n/accept-language.test.ts`, `e2e/langue.spec.ts`, `e2e/room.spec.ts` (langue et thème) | Sélecteur dans l'en-tête de toutes les pages, choix conservé dans un cookie. Sans cookie, la langue suit `Accept-Language`, puis le français (ADR 0014). |
 | I18N-03 | partiel | `src/i18n/format.ts` | — | Aucune date ni statistique n'est encore affichée ; le formatage `Intl` selon la langue reste à mettre en place. |
 
 ## 6.1 Tests
