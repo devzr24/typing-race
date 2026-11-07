@@ -1,6 +1,6 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { localeFromAcceptLanguage } from "./accept-language";
 import {
-  DEFAULT_LOCALE,
   EFFECTS_COOKIE,
   isLocale,
   isTheme,
@@ -12,10 +12,10 @@ import {
 } from "./config";
 import { messages, type Messages } from "./messages";
 
-/** Langue mémorisée dans le cookie, français par défaut. */
+/** Langue du cookie valide, sinon du navigateur, puis langue par défaut. */
 export async function getLocale(): Promise<Locale> {
   const value = (await cookies()).get(LOCALE_COOKIE)?.value;
-  return isLocale(value) ? value : DEFAULT_LOCALE;
+  return isLocale(value) ? value : localeFromAcceptLanguage((await headers()).get("accept-language"));
 }
 
 export async function getMessages(): Promise<Messages> {
