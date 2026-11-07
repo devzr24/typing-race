@@ -10,9 +10,9 @@ Mise à jour : 2026-11-07.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 26 |
-| Partiel | 34 |
-| Non fait | 30 |
+| Complet | 38 |
+| Partiel | 31 |
+| Non fait | 21 |
 | **Total** | **90** |
 
 ## 3. Contraintes techniques
@@ -58,22 +58,22 @@ Mise à jour : 2026-11-07.
 |---|---|---|---|---|
 | SALLE-01 | complet | `src/lib/rooms/service.ts`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx`, `src/app/room/[code]/room-view.tsx`, `prisma/migrations/20261106120000_room_spectator/` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` | Création réservée aux utilisateurs connectés ; le créateur devient l'hôte et choisit d'être participant (par défaut) ou spectateur (`RoomParticipant.isSpectator`), visible en direct dans la salle. Les spectateurs ne pourront pas taper : à appliquer avec la course (COURSE-05). |
 | SALLE-02 | complet | `src/lib/rooms/code.ts`, `src/lib/rooms/code-generator.ts` | `src/lib/rooms/code.test.ts` | 6 caractères, alphabet sans 0/O/1/I/L, générateur cryptographique, unicité en base. |
-| SALLE-03 | non fait | — | — | Toutes les salles sont actuellement accessibles par code. |
-| SALLE-04 | non fait | — | — | — |
-| SALLE-05 | non fait | — | — | Aucune capacité maximale. |
-| SALLE-06 | partiel | `prisma/schema.prisma` (`@@unique([roomId, key])`) | `src/lib/rooms/service.test.ts` | Pas de doublon dans une même salle (deuxième onglet). **Manque** : contrainte en base « une seule salle par personne » et proposition de quitter la salle actuelle. |
-| SALLE-07 | non fait | — | — | — |
-| SALLE-08 | partiel | `src/lib/rooms/service.ts`, `src/server/room-socket.ts` | `src/lib/rooms/service.test.ts` | Transfert automatique au plus ancien ; la salle est supprimée quand le dernier part (ADR 0006). **Manque** : exclure les bots et les personnes déconnectées du transfert. |
-| SALLE-09 | non fait | — | — | Pas encore de course : aucune vérification de l'état de la salle à l'arrivée. |
-| SALLE-10 | non fait | — | — | Aucune limite de tentatives par IP sur le code. |
+| SALLE-03 | complet | `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/access.test.ts` | Publique (explorateur, partie rapide, code), sur code (code ou lien), privée (lien seulement : le code seul est refusé) (ADR 0017). |
+| SALLE-04 | complet | `src/lib/rooms/service.ts`, `src/lib/rooms/prisma-store.ts`, `src/app/invite/[token]/page.tsx`, `src/app/room/[code]/room-view.tsx` | `src/lib/rooms/access.test.ts` | Jeton de 256 bits, seule l'empreinte SHA-256 est stockée ; usage unique lié à l'IP et à la personne, qui peut revenir ; révoqué à l'expulsion ; supprimé avec la salle. Le lien ne peut être copié qu'à sa création (jeton non stocké, ADR 0017) ; le statut reste visible ensuite. |
+| SALLE-05 | complet | `src/lib/rooms/service.ts`, `src/lib/rooms/schemas.ts` | `src/lib/rooms/access.test.ts` | Capacité 2 à 30 ; les bots comptent, les spectateurs non ; une salle pleine accepte encore des spectateurs. |
+| SALLE-06 | complet | `prisma/schema.prisma` (`RoomParticipant.key` unique), `src/lib/rooms/service.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/access.test.ts`, `src/lib/rooms/service.test.ts` | Contrainte en base ; l'interface propose de quitter la salle actuelle, qui n'est quittée qu'une fois la salle visée validée. Deuxième onglet : pas de doublon. |
+| SALLE-07 | complet | `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `src/app/room/[code]/room-view.tsx` | `src/lib/rooms/access.test.ts`, `src/server/room-socket.test.ts` | Expulsion d'un participant ou d'un spectateur : bannissement (`RoomBan`), liens révoqués, sockets retirés. Limite : un invité expulsé qui recrée une session d'invité obtient une nouvelle identité. |
+| SALLE-08 | complet | `src/lib/rooms/service.ts`, `src/server/room-socket.ts` | `src/lib/rooms/service.test.ts`, `src/lib/rooms/access.test.ts` | Au plus ancien humain connecté (participant ou spectateur), jamais un bot ; sinon la salle est fermée (ADR 0006, 0017). |
+| SALLE-09 | complet | `src/lib/rooms/service.ts` | `src/lib/rooms/access.test.ts` | Entrée seulement en attente ou aux résultats ; un membre qui se reconnecte reste accepté. |
+| SALLE-10 | complet | `src/lib/rooms/code-rate-limit.ts`, `src/lib/rooms/actions.ts` | `src/lib/rooms/code-rate-limit.test.ts` | 10 tentatives par minute et par IP, avant toute lecture en base ; un membre qui recharge sa salle ne consomme pas de tentative (ADR 0012, 0017). |
 
 ## 5.4 Rejoindre une course
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
 | JOIN-01 | complet | `src/app/page.tsx`, `src/app/home-actions.tsx` | `e2e/room.spec.ts` | Champ de code sur la page d'accueil ; message clair si le code n'existe pas. |
-| JOIN-02 | non fait | — | — | — |
-| JOIN-03 | non fait | — | — | — |
+| JOIN-02 | complet | `src/app/salles/`, `src/server/realtime.ts`, `src/server/room-socket.ts` | `src/lib/rooms/access.test.ts`, `e2e/room.spec.ts` | Salles publiques avec participants/capacité, langue, complexité, hôte et état ; filtres langue et complexité ; canal Socket.IO `lobby` mis à jour en direct. |
+| JOIN-03 | complet | `src/lib/rooms/service.ts` (`quickJoin`), `src/app/home-actions.tsx` | `src/lib/rooms/access.test.ts`, `e2e/room.spec.ts` | Salle la plus proche de sa capacité, égalité → la plus ancienne. Aucune : connecté → message et proposition de créer une salle publique par défaut ; invité → état vide et message. |
 
 ## 5.5 Configuration de la course
 
@@ -89,7 +89,7 @@ Mise à jour : 2026-11-07.
 | CONF-08 | partiel | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Mode correction obligatoire ou libre choisi par l'hôte et diffusé. **Manque** : application à la frappe (zone de frappe, COURSE-04). |
 | CONF-09 | partiel | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Bonus activés ou non, choisis par l'hôte et diffusés. **Manque** : application pendant la course (BONUS-01). |
 | CONF-10 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/lib/rooms/prisma-store.ts` (`RoomBot`) | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | L'hôte ajoute un bot avec son niveau (nom généré côté serveur, refus si la capacité est atteinte) ou le retire ; bots listés avec un badge et leur niveau. |
-| CONF-11 | non fait | — | — | Dépend de SALLE-03 et SALLE-05. |
+| CONF-11 | complet | `src/app/room/[code]/room-configuration.tsx`, `src/lib/rooms/schemas.ts` | `src/lib/rooms/access.test.ts`, `e2e/room.spec.ts` | Visibilité et capacité réglées par l’hôte en attente ou aux résultats, diffusées en direct. |
 | CONF-12 | complet | `src/lib/rooms/schemas.ts`, `src/lib/rooms/service.ts`, `src/app/room/[code]/room-configuration.tsx`, `src/server/room-socket.ts` | `src/lib/rooms/race.test.ts`, `e2e/room.spec.ts` | Configuration et bots diffusés à toute la salle par `room:update` à chaque changement ; formulaire en lecture seule pour les non-hôtes. Modifiable seulement en attente ou sur les résultats. |
 
 ## 5.6 Déroulement d'une course
@@ -181,7 +181,7 @@ Mise à jour : 2026-11-07.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| SEC-01 | partiel | `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `src/lib/rooms/schemas.ts` | `src/lib/rooms/race.test.ts` | Lancer, configurer, ajouter ou retirer un bot, nouvelle course et fermer : session relue côté serveur, hôte vérifié sous verrou, état de la salle vérifié, commandes validées par Zod. **Manque** : liens d'invitation et expulsion (SALLE-04, SALLE-07). |
+| SEC-01 | complet | `src/lib/rooms/service.ts`, `src/server/room-socket.ts`, `src/lib/rooms/schemas.ts`, `src/app/invite/[token]/page.tsx` | `src/lib/rooms/race.test.ts`, `src/lib/rooms/access.test.ts` | Lancer, configurer, ajouter ou retirer un bot, nouvelle course et fermer, générer des liens, expulser, régler visibilité et capacité : session relue côté serveur, hôte vérifié sous verrou, état de la salle vérifié, commandes validées par Zod. |
 | SEC-02 | non fait | — | — | Pas de téléversement (voir AUTH-04). |
 | SEC-03 | complet | `src/lib/auth/password.ts`, `src/lib/auth/rate-limit.ts`, `src/auth.ts` | `src/lib/auth/password.test.ts`, `src/lib/auth/password-concurrency.test.ts`, `src/lib/auth/rate-limit.test.ts`, `src/lib/auth/actions.test.ts` | scrypt avec sel aléatoire, comparaison à temps constant, hachage factice pour les noms inconnus ; aucun mot de passe journalisé. Limitation des tentatives (connexion par IP et par nom, inscription par IP) et plafond de 2 hachages simultanés (ADR 0012). |
 
@@ -201,4 +201,4 @@ Mise à jour : 2026-11-07.
 
 - **Hébergement (TECH-05)** : Railway plutôt qu'un VPS (ADR 0001). HTTPS et déploiement à chaque push sont automatiques. Écart à faire valider.
 - **Temps réel (TECH-06)** : Socket.IO sur le même serveur Node que Next.js, sans service externe (ADR 0002).
-- **Transfert d'hôte (SALLE-08)** : au participant présent depuis le plus longtemps, après un délai de grâce de 30 s en cas de déconnexion (ADR 0006).
+- **Transfert d’hôte (SALLE-08)** : à l’humain connecté présent depuis le plus longtemps (participant ou spectateur, jamais un bot), après un délai de grâce de 30 s en cas de déconnexion (ADR 0006).
