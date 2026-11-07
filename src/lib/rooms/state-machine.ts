@@ -23,3 +23,6 @@ export function transitionRoom(room: Room, event: RoomTransition): TransitionRes
   if (room.status === "RESULTATS" && event === "RESET") return { ok: true, status: "EN_ATTENTE" };
   return { ok: false, error: "roomInvalidTransition" };
 }
+export function isJoinable(room: { status: string }): boolean {
+  return room.status === "EN_ATTENTE" || room.status === "RESULTATS";
+}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { buttonClass, inputClass, selectClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText } from "@/i18n/format";
-import { raceConfigSchema, type HostCommand } from "@/lib/rooms/schemas";
+import { raceConfigSchema, roomAccessSchema, type HostCommand } from "@/lib/rooms/schemas";
 import type { PublicRoom, RoomBot } from "@/lib/rooms/types";
 
 export function RoomConfiguration({ room, editable, command }: {
@@ -12,6 +12,7 @@ export function RoomConfiguration({ room, editable, command }: {
 }) {
   const { m } = useI18n();
   const [invalid, setInvalid] = useState(false);
+  const [invalidAccess, setInvalidAccess] = useState(false);
   const c = room.config;
   const selects = {
     textLanguage: ["FR", "EN"], textType: ["COHERENT", "ALEATOIRE"],
@@ -19,6 +20,27 @@ export function RoomConfiguration({ room, editable, command }: {
   } as const;
   return <section className="flex flex-col gap-3" aria-labelledby="config-title">
     <h2 id="config-title" className="text-lg font-medium">{m.room.configuration}</h2>
+    <form onSubmit={(event) => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget);
+      const parsed = roomAccessSchema.safeParse({ visibility: data.get("visibility"), capacity: Number(data.get("capacity")) });
+      setInvalidAccess(!parsed.success);
+      if (parsed.success) command({ type: "configureAccess", access: parsed.data });
+    }}>
+      <fieldset disabled={!editable} className="grid gap-3 disabled:opacity-70">
+        <legend>{m.room.access}</legend>
+        <label className="flex flex-col gap-1">{m.room.visibility}
+          <select className={selectClass} name="visibility" defaultValue={room.visibility}>
+            {(["PUBLIQUE", "SUR_CODE", "PRIVEE"] as const).map((v) => <option key={v} value={v}>{m.room.visibilities[v]}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">{m.room.capacity}
+          <input className={inputClass} name="capacity" type="number" min={2} max={30} required defaultValue={room.capacity} />
+        </label>
+        <button className={buttonClass}>{m.room.saveAccess}</button>
+      </fieldset>
+      {invalidAccess ? <p role="alert" className="text-alert">{errorText(m, "roomConfigInvalid")}</p> : null}
+    </form>
     <form onSubmit={(event) => {
       event.preventDefault();
       const data = new FormData(event.currentTarget);
