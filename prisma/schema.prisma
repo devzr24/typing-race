@@ -43,9 +43,9 @@ model Word {
 // Utilisateur inscrit (GitHub, Discord ou nom d'utilisateur + mot de passe).
 // Aucun courriel n'est stocké (voir ADR 0004). Les invités ne sont pas en base.
 model User {
-  id           String    @id @default(cuid())
+  id           String            @id @default(cuid())
   /// Unique, en minuscules. Suffixe numérique en cas de conflit OAuth (ADR 0005).
-  username     String    @unique
+  username     String            @unique
   /// Haché avec scrypt ; null pour les comptes GitHub/Discord.
   passwordHash String?
   /// Nom d'affichage fourni par GitHub/Discord.
@@ -54,8 +54,8 @@ model User {
   image        String?
   accounts     Account[]
   roomEntries  RoomParticipant[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 }
 
 // Compte GitHub/Discord relié à un utilisateur (format attendu par @auth/prisma-adapter).
@@ -81,22 +81,88 @@ model Account {
 
 // État d'une salle. Seul EN_ATTENTE est utilisé pour l'instant ; les autres préparent
 // la future machine à états de la course.
+// Machine à états de la salle (COURSE-01, docs/architecture/machine-a-etats.md).
 enum RoomStatus {
   EN_ATTENTE
+  DECOMPTE
   EN_COURSE
-  TERMINEE
+  RESULTATS
+  FERMEE
 }
 
-// Salle rejointe par code (ADR 0006). Supprimée quand le dernier participant part.
+// SALLE-03 : publique (explorateur, partie rapide), sur code, privée (lien d'invitation seulement).
+enum RoomVisibility {
+  PUBLIQUE
+  SUR_CODE
+  PRIVEE
+}
+
+// CONF-03 : passage du corpus (Passage) ou mots tirés du dictionnaire (Word).
+enum TextType {
+  COHERENT
+  ALEATOIRE
+}
+
+// CONF-05 : critères mesurables documentés dans l'ADR de génération du texte.
+enum TextComplexity {
+  FACILE
+  MOYEN
+  DIFFICILE
+}
+
+// CONF-08 : correction obligatoire ou libre.
+enum ErrorMode {
+  CORRECTION
+  LIBRE
+}
+
+// BOT-01 : niveaux de src/lib/bots/levels.ts (ADR 0015).
+enum BotLevel {
+  NOOB
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+  IMPOSSIBLE
+}
+
+// Salle rejointe par code (ADR 0006). Supprimée quand le dernier humain part.
 model Room {
-  id           String            @id @default(cuid())
+  id        String     @id @default(cuid())
   /// 6 caractères sans 0/O/1/I/L, ex. « K7MPQ2 ».
-  code         String            @unique
-  status       RoomStatus        @default(EN_ATTENTE)
+  code      String     @unique
+  status    RoomStatus @default(EN_ATTENTE)
   /// Identifiant de session de l'hôte (id utilisateur ou « guest-<uuid> »).
-  hostKey      String
-  createdAt    DateTime          @default(now())
+  hostKey   String
+  createdAt DateTime   @default(now())
+
+  // Accès (SALLE-03, SALLE-05) : capacité de 2 à 30 participants, spectateurs non comptés.
+  visibility RoomVisibility @default(PUBLIQUE)
+  capacity   Int            @default(8)
+
+  // Configuration de course par l'hôte (CONF-01 à CONF-10).
+  /// Temps maximal en secondes (30 à 600), null = aucun.
+  timeLimitSec   Int?
+  textLanguage   TextLanguage   @default(FR)
+  textType       TextType       @default(COHERENT)
+  /// Longueur du texte en mots.
+  wordCount      Int            @default(30)
+  complexity     TextComplexity @default(MOYEN)
+  punctuation    Boolean        @default(true)
+  numbers        Boolean        @default(false)
+  capitals       Boolean        @default(true)
+  accents        Boolean        @default(true)
+  /// Caractères imposés ou exclus (texte aléatoire, CONF-07).
+  includeChars   String         @default("")
+  excludeChars   String         @default("")
+  errorMode      ErrorMode      @default(CORRECTION)
+  bonusesEnabled Boolean        @default(true)
+
   participants RoomParticipant[]
+  bots         RoomBot[]
+  invites      RoomInvite[]
+  bans         RoomBan[]
+
+  @@index([visibility, status])
 }
 
 // Présence d'un utilisateur ou d'un invité dans une salle.
@@ -104,7 +170,8 @@ model RoomParticipant {
   id          String   @id @default(cuid())
   roomId      String
   /// Identifiant de session : id utilisateur ou « guest-<uuid> ».
-  key         String
+  /// Unique : une personne n'est que dans une seule salle à la fois (SALLE-06).
+  key         String   @unique
   /// Renseigné pour un utilisateur inscrit, null pour un invité.
   userId      String?
   /// Nom et photo copiés depuis la session au moment de l'arrivée.
@@ -118,6 +185,48 @@ model RoomParticipant {
   room Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([roomId, key])
   @@index([roomId, joinedAt])
+}
+
+// Bot ajouté par l'hôte (CONF-10) ; compte dans la capacité, jamais hôte.
+model RoomBot {
+  id        String   @id @default(cuid())
+  roomId    String
+  level     BotLevel
+  name      String
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+// Lien d'invitation à usage unique (SALLE-04). Seule l'empreinte SHA-256 du jeton est stockée.
+model RoomInvite {
+  id         String    @id @default(cuid())
+  roomId     String
+  tokenHash  String    @unique
+  /// Personne et adresse IP liées à la première utilisation.
+  usedByKey  String?
+  usedByName String?
+  usedIp     String?
+  usedAt     DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+// Personne expulsée : ne peut plus rejoindre cette salle (SALLE-07).
+model RoomBan {
+  id        String   @id @default(cuid())
+  roomId    String
+  key       String
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, key])
 }

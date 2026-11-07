@@ -73,7 +73,7 @@ export class PrismaRoomStore implements RoomStore {
           return { ...identity, id: p.id, joinedAt: p.joinedAt, isSpectator: p.isSpectator };
         },
         removeParticipant: async (key) => {
-          await tx.roomParticipant.delete({ where: { roomId_key: { roomId, key } } });
+          await tx.roomParticipant.deleteMany({ where: { roomId, key } });
         },
         setHost: async (key) => {
           await tx.room.update({ where: { id: roomId }, data: { hostKey: key } });
