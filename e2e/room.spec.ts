@@ -131,6 +131,31 @@ test("code de salle inexistant : message d'erreur clair", async ({ page }) => {
   await expect(page.getByRole("main").getByRole("alert")).toHaveText("Aucune salle ne correspond à ce code.");
 });
 
+test("explorateur en direct : une salle publique créée est rejointe par la partie rapide", async ({ browser }) => {
+  const hostContext = await browser.newContext();
+  const playerContext = await browser.newContext();
+  try {
+    const host = await hostContext.newPage();
+    const player = await playerContext.newPage();
+    await continueAsGuest(player, "explorateur-e2e");
+    await player.getByRole("main").getByRole("link", { name: "Salles publiques" }).click();
+    await registerHost(host);
+    const code = await createRoom(host);
+    await expect(host.getByText("En direct", { exact: true })).toBeVisible();
+    await host.getByLabel("Capacité", { exact: true }).fill("2");
+    await host.getByRole("button", { name: "Enregistrer l’accès", exact: true }).click();
+    const listed = player.getByRole("listitem").filter({ has: player.getByRole("heading", { name: code, exact: true }) });
+    await expect(listed).toContainText("1 / 2");
+    await player.getByRole("button", { name: "Faire une course", exact: true }).click();
+    await expect(player).toHaveURL(`/room/${code}`);
+    await expect(host.getByRole("heading", { name: "Participants (2)" })).toBeVisible();
+    await host.getByRole("button", { name: "Fermer la salle", exact: true }).click();
+  } finally {
+    await hostContext.close();
+    await playerContext.close();
+  }
+});
+
 test("langue et thème : choix appliqués et mémorisés", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
