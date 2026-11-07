@@ -4,8 +4,9 @@ import { auth } from "@/auth";
 import { errorText } from "@/i18n/format";
 import type { ErrorCode, Messages } from "@/i18n/messages";
 import { getMessages } from "@/i18n/server";
-import { normalizeRoomCode, validateRoomCode } from "@/lib/rooms/code";
+import { normalizeRoomCode } from "@/lib/rooms/code";
 import { roomStore } from "@/lib/rooms/prisma-store";
+import { roomPathCodeSchema } from "@/lib/rooms/schemas";
 import { toPublicRoom } from "@/lib/rooms/service";
 import { RoomView } from "./room-view";
 
@@ -28,15 +29,15 @@ function Notice({ m, title, error }: { m: Messages; title: string; error: ErrorC
 
 export default async function RoomPage({ params }: PageProps<"/room/[code]">) {
   const [m, { code: rawCode }, session] = await Promise.all([getMessages(), params, auth()]);
-  const code = normalizeRoomCode(decodeURIComponent(rawCode));
+  const parsed = roomPathCodeSchema.safeParse(rawCode);
 
   let content;
-  if (validateRoomCode(code)) {
+  if (!parsed.success) {
     content = <Notice m={m} title={m.room.notFoundTitle} error="roomCodeInvalid" />;
   } else if (!session?.user) {
     content = <Notice m={m} title={m.room.loginRequiredTitle} error="loginRequiredForRoom" />;
   } else {
-    const room = await roomStore.findRoom(code);
+    const room = await roomStore.findRoom(parsed.data);
     const self = room?.participants.find((p) => p.key === session.user.id);
     if (!room) {
       content = <Notice m={m} title={m.room.notFoundTitle} error="roomNotFound" />;

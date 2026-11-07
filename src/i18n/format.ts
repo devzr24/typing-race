@@ -1,4 +1,11 @@
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from "@/lib/auth/limits";
+import {
+  GUEST_PSEUDO_MAX_LENGTH,
+  GUEST_PSEUDO_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+} from "@/lib/auth/limits";
 import { ROOM_CODE_LENGTH } from "@/lib/rooms/code";
 import type { ErrorCode, Messages } from "./messages";
 
@@ -6,6 +13,8 @@ import type { ErrorCode, Messages } from "./messages";
 const LIMITS = {
   usernameMin: USERNAME_MIN_LENGTH,
   usernameMax: USERNAME_MAX_LENGTH,
+  pseudoMin: GUEST_PSEUDO_MIN_LENGTH,
+  pseudoMax: GUEST_PSEUDO_MAX_LENGTH,
   passwordMin: PASSWORD_MIN_LENGTH,
   passwordMax: PASSWORD_MAX_LENGTH,
   codeLength: ROOM_CODE_LENGTH,

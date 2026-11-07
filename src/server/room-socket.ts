@@ -1,4 +1,4 @@
-import { normalizeRoomCode, validateRoomCode } from "@/lib/rooms/code";
+import { roomWatchSchema } from "@/lib/rooms/schemas";
 import { roomStore } from "@/lib/rooms/prisma-store";
 import { leaveRoom, toPublicRoom } from "@/lib/rooms/service";
 import type { Identity } from "@/lib/rooms/types";
@@ -60,8 +60,9 @@ export function registerRoomHandlers(io: RealtimeServer): void {
     socket.on("room:watch", async (payload, ack) => {
       if (typeof ack !== "function") return;
       try {
-        const code = normalizeRoomCode(String(payload?.code ?? ""));
-        if (validateRoomCode(code)) return ack({ ok: false, error: "roomCodeInvalid" });
+        const parsed = roomWatchSchema.safeParse(payload);
+        if (!parsed.success) return ack({ ok: false, error: "roomCodeInvalid" });
+        const { code } = parsed.data;
         const room = await roomStore.findRoom(code);
         if (!room) return ack({ ok: false, error: "roomClosed" });
         const self = room.participants.find((p) => p.key === data.identity.key);

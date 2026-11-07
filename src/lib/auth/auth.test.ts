@@ -103,6 +103,27 @@ describe("authorize credentials", () => {
   });
 });
 
+describe("authorize guest", () => {
+  it.each(["", "ab", "a".repeat(21)])("refuse un POST direct avec le pseudo %j", async (pseudo) => {
+    const response = await Auth(new Request("http://localhost/api/auth/callback/guest", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ pseudo }),
+    }), { ...config(), skipCSRFCheck });
+    expect(response.headers.get("location")).toContain("error=CredentialsSignin");
+    expect(state.user.create).not.toHaveBeenCalled();
+  });
+
+  it.each(["abc", "a".repeat(20)])("accepte un POST direct avec le pseudo %s", async (pseudo) => {
+    const response = await Auth(new Request("http://localhost/api/auth/callback/guest", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ pseudo }),
+    }), { ...config(), skipCSRFCheck });
+    expect(response.headers.get("location")).toBe("http://localhost");
+  });
+});
+
 describe("liaison OAuth", () => {
   async function callback(signedIn: boolean) {
     const provider = state.config!.providers[0];

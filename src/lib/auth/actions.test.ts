@@ -1,6 +1,6 @@
 import { AuthError, CredentialsSignin } from "@auth/core/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loginWithPassword, register } from "./actions";
+import { continueAsGuest, loginWithPassword, register, signInWithProvider } from "./actions";
 import { ScryptQueueFullError } from "./password";
 
 const state = vi.hoisted(() => ({
@@ -40,6 +40,28 @@ beforeEach(() => {
 });
 
 describe("erreurs des actions d'authentification", () => {
+  it.each(["", "ab", "a".repeat(21)])("refuse le pseudo invité %j avant signIn", async (pseudo) => {
+    const data = new FormData();
+    data.set("pseudo", pseudo);
+    expect((await continueAsGuest({}, data)).fieldErrors?.pseudo)
+      .toBe(pseudo ? "guestPseudoLength" : "required");
+    expect(state.signIn).not.toHaveBeenCalled();
+  });
+
+  it("connecte un invité avec son pseudo normalisé", async () => {
+    const data = new FormData();
+    data.set("pseudo", " Alice ");
+    await continueAsGuest({}, data);
+    expect(state.signIn).toHaveBeenCalledWith("guest", { pseudo: "alice", redirectTo: "/" });
+  });
+
+  it("ignore un fournisseur inconnu", async () => {
+    const data = new FormData();
+    data.set("provider", "inconnu");
+    await signInWithProvider(data);
+    expect(state.signIn).not.toHaveBeenCalled();
+  });
+
   it("traduit le code CredentialsSignin de saturation", async () => {
     state.signIn.mockRejectedValueOnce(rateLimitedError());
     expect(await loginWithPassword({}, form())).toEqual({

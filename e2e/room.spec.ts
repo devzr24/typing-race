@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /** Depuis l'accueil : page de connexion → « Continuer en invité » → retour à l'accueil. */
-async function continueAsGuest(page: Page, pseudo?: string) {
+async function continueAsGuest(page: Page, pseudo = "invite-e2e") {
   await page.goto("/");
   await page.getByRole("banner").getByRole("link", { name: "Connexion" }).click();
-  if (pseudo) await page.getByLabel("Pseudo temporaire (facultatif)").fill(pseudo);
+  await page.getByLabel("Pseudo temporaire").fill(pseudo);
   await page.getByRole("button", { name: "Continuer en invité" }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("banner").getByText("(invité)")).toBeVisible();

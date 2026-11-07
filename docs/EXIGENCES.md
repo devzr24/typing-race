@@ -10,9 +10,9 @@ Mise à jour : 2026-11-07.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 14 |
-| Partiel | 21 |
-| Non fait | 55 |
+| Complet | 16 |
+| Partiel | 20 |
+| Non fait | 54 |
 | **Total** | **90** |
 
 ## 3. Contraintes techniques
@@ -22,10 +22,10 @@ Mise à jour : 2026-11-07.
 | TECH-01 | complet | `package.json`, `src/app/` | toute la suite | Next.js 16 (App Router) et React 19. |
 | TECH-02 | complet | `tsconfig.json`, `eslint.config.ts` | CI : `npm run lint`, `npm run typecheck` | Aucun fichier `.js`/`.jsx` suivi par Git ; `strict: true`. `no-explicit-any` et `ban-ts-comment` sont en erreur par héritage de `eslint-config-next/typescript` (recommandé de typescript-eslint) ; aucun `any`, `@ts-ignore` ni `@ts-expect-error` dans le code écrit à la main. Le client Prisma généré (`src/generated/`, ignoré par Git et par ESLint) en contient. |
 | TECH-03 | complet | `src/app/globals.css` | — | Tailwind CSS 4. |
-| TECH-04 | partiel | `prisma/schema.prisma`, `prisma/migrations/` | `src/server/migrate.test.ts` | PostgreSQL + Prisma 7, migrations versionnées et appliquées au démarrage (ADR 0008). **Manque : script de seed** (corpus de textes, utilisateurs, historique). |
+| TECH-04 | partiel | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts`, `prisma/corpus/` | `src/server/migrate.test.ts`, `src/server/corpus.test.ts`, `src/server/seed.test.ts` | PostgreSQL + Prisma 7, migrations versionnées et appliquées au démarrage (ADR 0008). Seed idempotent (`npm run db:seed`, lancé au démarrage sur Railway, ADR 0013) : 20 extraits du domaine public et environ 1000 mots par langue, comptes de démonstration `demo` et `demo2`. **Manque** : historique de démonstration (attend les tables de résultats, RES-05). |
 | TECH-05 | partiel | `railway.json`, `server.ts` | `/api/health` | Déployé en HTTPS sur Railway : https://typing-race-production-4a76.up.railway.app. **Écart** : Railway est une plateforme hébergée (PaaS), pas un VPS. Choix à faire valider par l'enseignant ou à remplacer par un VPS (ADR 0001). |
 | TECH-06 | partiel | `server.ts`, `src/server/room-socket.ts`, `src/server/realtime.ts` | `e2e/room.spec.ts` | Socket.IO sur le serveur Node (ADR 0002). Utilisé pour la liste des participants ; la progression de course n'existe pas encore. |
-| TECH-07 | non fait | — | — | Aucune bibliothèque de schéma (Zod ou autre). Les entrées sont vérifiées à la main (`validateUsername`, `validateRoomCode`…), y compris le message Socket.IO `room:watch`. |
+| TECH-07 | complet | `src/lib/auth/schemas.ts`, `src/lib/rooms/schemas.ts`, `src/i18n/schemas.ts` | `src/lib/auth/schemas.test.ts`, `src/lib/rooms/schemas.test.ts`, `src/i18n/schemas.test.ts` | Zod 4 sur toutes les entrées actuelles : actions serveur (authentification, salles, langue et thème), `authorize` des fournisseurs `credentials` et `guest`, message Socket.IO `room:watch`, code de salle dans l'URL (`/room/[code]`). Les schémas renvoient des codes `ErrorCode`. Seule route API maison : `/api/health`, sans entrée. Chaque nouvelle entrée devra avoir son schéma. |
 | TECH-08 | complet | — | — | Aucun service externe payant. GitHub et Discord OAuth sont gratuits ; les frais Railway sont à la charge de l'étudiant. |
 | TECH-09 | complet | `.github/workflows/ci.yml` | exécutions vertes sur GitHub Actions | Chaque push sur `master` et chaque PR : lint, `tsc --noEmit`, tests unitaires, build, tests de bout en bout. |
 | TECH-10 | complet | `.env.example`, `.gitignore` | `src/server/env.test.ts` | `.env` n'est jamais commité ; le serveur s'arrête si une variable obligatoire manque en production. |
@@ -46,7 +46,7 @@ Mise à jour : 2026-11-07.
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
 | AUTH-01 | complet | `src/auth.ts`, `src/app/login/`, `src/app/register/`, `src/lib/auth/` | `src/lib/auth/username.test.ts`, `src/lib/auth/password.test.ts`, `src/lib/auth/account-linking.test.ts`, `src/lib/auth/auth.test.ts` | GitHub, Discord, et nom d'utilisateur + mot de passe (ADR 0004, 0005). Parcours OAuth vérifié manuellement. Un compte GitHub/Discord n'est jamais relié à une session déjà ouverte ; `/login` et `/register` redirigent une personne connectée (ADR 0012). |
-| AUTH-02 | partiel | `src/auth.ts` (fournisseur `guest`), `src/lib/auth/guest.ts`, `src/app/login/login-forms.tsx` | `e2e/room.spec.ts` | Session d'invité dans le cookie signé d'Auth.js. **Écarts** : le pseudo est facultatif (généré si vide) et limité à 3–24 caractères au lieu de 3–20. |
+| AUTH-02 | complet | `src/auth.ts` (fournisseur `guest`), `src/lib/auth/schemas.ts`, `src/app/login/login-forms.tsx` | `src/lib/auth/schemas.test.ts`, `src/lib/auth/auth.test.ts`, `e2e/room.spec.ts` | Pseudo obligatoire de 3 à 20 caractères, vérifié dans l'action et dans le fournisseur Auth.js ; session d'invité dans le cookie signé d'Auth.js. |
 | AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` (un invité ne peut pas créer de salle) | Un invité ne peut pas créer de salle : refus côté serveur et lien vers la connexion à la place du formulaire. Pas de photo pour l'invité ; avatar = initiale du nom. **Partiel** : l'historique n'existe pas encore (HIST-01), la règle « pas d'historique pour l'invité » reste à appliquer. |
 | AUTH-04 | non fait | — | — | Seule la photo fournie par GitHub/Discord est affichée ; pas de téléversement. |
 | AUTH-05 | non fait | — | — | — |
@@ -156,7 +156,7 @@ Mise à jour : 2026-11-07.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| TEST-01 | partiel | `src/**/*.test.ts` | 120 tests unitaires (16 fichiers) | Couvre l'authentification (dont limitation des tentatives et refus de liaison OAuth), les codes, le service de salles, la configuration serveur, la langue. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
+| TEST-01 | partiel | `src/**/*.test.ts` | 179 tests unitaires (21 fichiers) | Couvre l'authentification (dont limitation des tentatives et refus de liaison OAuth), les schémas Zod, les codes, le service de salles, la configuration serveur, la langue, l'intégrité du corpus et le seed. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
 | TEST-02 | partiel | `e2e/room.spec.ts`, `playwright.config.ts` | 5 tests de bout en bout | Inscription puis création de salle, arrivée et départ en direct, refus de création pour un invité, code inexistant, langue et thème. |
 | TEST-03 | partiel | `e2e/room.spec.ts` | — | Aucun test n'utilise OAuth. L'hôte s'inscrit avec un nom d'utilisateur + mot de passe ; le joueur qui rejoint est un invité. |
 
@@ -191,7 +191,7 @@ Mise à jour : 2026-11-07.
 |---|---|---|
 | Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race. Accès de l'enseignant à confirmer ; commits à poursuivre régulièrement. |
 | URL de production | complet | https://typing-race-production-4a76.up.railway.app |
-| `README.md` | partiel | PostgreSQL via Docker Compose (`docker-compose.yml`). Manque : captures d'écran, compte de démonstration. |
+| `README.md` | partiel | PostgreSQL via Docker Compose (`docker-compose.yml`), comptes de démonstration et commande de seed. Manque : captures d'écran. |
 | `docs/ARCHITECTURE.md` | partiel | Version initiale : vue d'ensemble, modèle de données, machine à états, ADR temps réel, flux temps réel actuels et prévus, approche prévue pour les bots. Manque pour la remise finale : ADR sur les bots, flux de course réels. |
 | `docs/EXIGENCES.md` | complet | Ce fichier. |
 | `docs/DEMARCHE-CREATIVE.md` | non fait | Voir DES-01 à DES-03. |

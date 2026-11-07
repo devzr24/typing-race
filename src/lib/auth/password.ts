@@ -1,14 +1,5 @@
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from "node:crypto";
-import type { ErrorCode } from "@/i18n/messages";
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "./limits";
-
-/** Retourne le code d'erreur (traduit par l'interface), ou null si le mot de passe est acceptable. */
-export function validatePassword(password: string): ErrorCode | null {
-  if (password.length === 0) return "required";
-  if (password.length < PASSWORD_MIN_LENGTH) return "passwordTooShort";
-  if (password.length > PASSWORD_MAX_LENGTH) return "passwordTooLong";
-  return null;
-}
+export { validatePassword } from "./schemas";
 
 // Paramètres scrypt recommandés par OWASP (N = 2^17, r = 8, p = 1).
 const SCRYPT_PARAMS = { N: 2 ** 17, r: 8, p: 1 } as const;

@@ -5,9 +5,10 @@ import { headers } from "next/headers";
 import { Prisma } from "@/generated/prisma/client";
 import { signIn, signOut } from "@/auth";
 import type { ErrorCode } from "@/i18n/messages";
-import { hashPassword, ScryptQueueFullError, validatePassword } from "@/lib/auth/password";
+import { hashPassword, ScryptQueueFullError } from "@/lib/auth/password";
 import { authRateLimiter, clientIp } from "@/lib/auth/rate-limit";
-import { normalizeUsername, validateUsername } from "@/lib/auth/username";
+import { normalizeUsername } from "@/lib/auth/username";
+import { authFieldErrors, credentialsSchema, guestSchema, providerSchema, registerSchema } from "@/lib/auth/schemas";
 import { prisma } from "@/lib/prisma";
 
 /** Les erreurs sont des codes, traduits par l'interface dans la langue choisie. */
@@ -17,17 +18,15 @@ export type FormState = {
   values?: { username?: string; pseudo?: string };
 };
 
-const OAUTH_PROVIDERS = ["github", "discord"] as const;
-
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
 }
 
 export async function signInWithProvider(formData: FormData): Promise<void> {
-  const provider = field(formData, "provider");
-  if (!OAUTH_PROVIDERS.includes(provider as (typeof OAUTH_PROVIDERS)[number])) return;
-  await signIn(provider, { redirectTo: "/" });
+  const provider = providerSchema.safeParse(field(formData, "provider"));
+  if (!provider.success) return;
+  await signIn(provider.data, { redirectTo: "/" });
 }
 
 export async function loginWithPassword(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -35,10 +34,13 @@ export async function loginWithPassword(_prev: FormState, formData: FormData): P
   const password = field(formData, "password");
   const values = { username };
 
-  const fieldErrors: FormState["fieldErrors"] = {};
-  if (!username) fieldErrors.username = "required";
-  if (!password) fieldErrors.password = "required";
-  if (fieldErrors.username || fieldErrors.password) return { fieldErrors, values };
+  const parsed = credentialsSchema.safeParse({ username, password });
+  if (!parsed.success) {
+    const fieldErrors: FormState["fieldErrors"] = {};
+    if (!username) fieldErrors.username = "required";
+    if (!password) fieldErrors.password = "required";
+    return Object.keys(fieldErrors).length ? { fieldErrors, values } : { error: "invalidLogin", values };
+  }
 
   try {
     await signIn("credentials", { username, password, redirectTo: "/" });
@@ -59,13 +61,8 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   const confirm = field(formData, "confirm");
   const values = { username };
 
-  const fieldErrors: FormState["fieldErrors"] = {};
-  const usernameError = validateUsername(username);
-  if (usernameError) fieldErrors.username = usernameError;
-  const passwordError = validatePassword(password);
-  if (passwordError) fieldErrors.password = passwordError;
-  else if (password !== confirm) fieldErrors.confirm = "passwordMismatch";
-  if (Object.keys(fieldErrors).length > 0) return { fieldErrors, values };
+  const parsed = registerSchema.safeParse({ username, password, confirm });
+  if (!parsed.success) return { fieldErrors: authFieldErrors(parsed.error), values };
 
   if (!authRateLimiter.consume(`register:ip:${clientIp(await headers())}`, 5, 60 * 60_000)) {
     return { error: "tooManyAttempts", values };
@@ -91,9 +88,8 @@ export async function continueAsGuest(_prev: FormState, formData: FormData): Pro
   const pseudo = normalizeUsername(field(formData, "pseudo"));
   const values = { pseudo };
 
-  // Pseudo facultatif : s'il est vide, un pseudo est généré (ex. invite-4821).
-  const pseudoError = pseudo ? validateUsername(pseudo) : null;
-  if (pseudoError) return { fieldErrors: { pseudo: pseudoError }, values };
+  const parsed = guestSchema.safeParse({ pseudo });
+  if (!parsed.success) return { fieldErrors: authFieldErrors(parsed.error), values };
 
   try {
     await signIn("guest", { pseudo, redirectTo: "/" });

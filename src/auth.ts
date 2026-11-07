@@ -7,15 +7,13 @@ import Discord from "next-auth/providers/discord";
 import GitHub from "next-auth/providers/github";
 import { randomUUID } from "node:crypto";
 import { Prisma, type User } from "@/generated/prisma/client";
-import { generateGuestName } from "@/lib/auth/guest";
+import { credentialsSchema, guestSchema } from "@/lib/auth/schemas";
 import { canLinkAccount } from "@/lib/auth/account-linking";
-import { hashPassword, ScryptQueueFullError, validatePassword, verifyPassword } from "@/lib/auth/password";
+import { hashPassword, ScryptQueueFullError, verifyPassword } from "@/lib/auth/password";
 import { authRateLimiter, clientIp } from "@/lib/auth/rate-limit";
 import {
   findAvailableUsername,
-  normalizeUsername,
   usernameFromProvider,
-  validateUsername,
 } from "@/lib/auth/username";
 import { prisma } from "@/lib/prisma";
 
@@ -134,14 +132,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "credentials",
       credentials: { username: {}, password: {} },
       async authorize(credentials, request) {
-        const username = normalizeUsername(String(credentials.username ?? ""));
-        const password = String(credentials.password ?? "");
+        const parsed = credentialsSchema.safeParse(credentials);
         if (!authRateLimiter.consume(`login:ip:${clientIp(request.headers)}`, 20, 10 * 60_000)) {
           throw new RateLimitedError();
         }
-        if (validateUsername(username) || validatePassword(password)) {
+        if (!parsed.success) {
           throw new InvalidLoginError();
         }
+        const { username, password } = parsed.data;
         const usernameKey = `login:username:${username}`;
         if (authRateLimiter.isLimited(usernameKey, 10)) {
           throw new RateLimitedError();
@@ -167,9 +165,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "guest",
       credentials: { pseudo: {} },
       authorize(credentials) {
-        const raw = normalizeUsername(String(credentials.pseudo ?? ""));
-        const pseudo = raw === "" ? generateGuestName() : raw;
-        if (validateUsername(pseudo)) throw new CredentialsSignin();
+        const parsed = guestSchema.safeParse(credentials);
+        if (!parsed.success) throw new CredentialsSignin();
+        const { pseudo } = parsed.data;
         return { id: `guest-${randomUUID()}`, username: pseudo, name: pseudo, isGuest: true };
       },
     }),
