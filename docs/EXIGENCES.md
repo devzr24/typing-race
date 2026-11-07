@@ -11,8 +11,8 @@ Mise à jour : 2026-11-07.
 | Statut | Nombre |
 |---|---|
 | Complet | 16 |
-| Partiel | 20 |
-| Non fait | 54 |
+| Partiel | 30 |
+| Non fait | 44 |
 | **Total** | **90** |
 
 ## 3. Contraintes techniques
@@ -101,31 +101,31 @@ Mise à jour : 2026-11-07.
 | COURSE-03 | non fait | — | — | — |
 | COURSE-04 | non fait | — | — | — |
 | COURSE-05 | non fait | — | — | — |
-| COURSE-06 | non fait | — | — | — |
+| COURSE-06 | partiel | `src/lib/race/metrics.ts`, `src/lib/race/ranking.ts` | `src/lib/race/metrics.test.ts`, `src/lib/race/ranking.test.ts` | Calculs serveur prêts : MPM net et brut, précision et progression mesurés avec le temps de course du serveur (`raceElapsedMs`), contrôle de vraisemblance d'une progression (`isPlausibleProgress`). **Manque** : serveur de course qui détient le départ, la fin, la progression et le classement. |
 | COURSE-07 | non fait | — | — | — |
 | COURSE-08 | partiel | `src/app/room/[code]/room-view.tsx`, `src/server/room-socket.ts` | `e2e/room.spec.ts` | Reconnexion Socket.IO et délai de grâce de 30 s, seulement dans la salle d'attente. **Manque** : reprise de la course et abandon automatique. |
 | COURSE-09 | non fait | — | — | — |
-| COURSE-10 | non fait | — | — | — |
+| COURSE-10 | partiel | `src/lib/race/ranking.ts` | `src/lib/race/ranking.test.ts` | `rankParticipants` : arrivés par temps d'arrivée, puis non arrivés par progression, puis abandons par progression au moment de l'abandon. **Manque** : appel par le serveur à la fin de la course et affichage. |
 | COURSE-11 | non fait | — | — | — |
 
 ## 5.7 Bots
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| BOT-01 | non fait | — | — | — |
-| BOT-02 | non fait | — | — | — |
-| BOT-03 | non fait | — | — | — |
-| BOT-04 | non fait | — | — | — |
-| BOT-05 | non fait | — | — | — |
+| BOT-01 | partiel | `src/lib/bots/levels.ts`, `docs/adr/0015-moteur-des-bots.md` | `src/lib/bots/engine.test.ts` | Cinq niveaux (MPM nets, taux d'erreur) : Noob 10–20 (12 %), Débutant 20–35 (8 %), Intermédiaire 35–60 (5 %), Expert 70–100 (2 %), Impossible 140–170 (0,5 %) ; « 140+ » borné à 170 (ADR 0015). Logique pure seulement, pas encore branchée au serveur de course. |
+| BOT-02 | partiel | `src/lib/bots/engine.ts` | `src/lib/bots/engine.test.ts` | Vitesse de base tirée dans la plage du niveau, rythme propre à chaque mot (±15 %), ralentissement sur les mots difficiles, hésitations sur 6 % des mots puis accélération pour résorber le retard. Logique pure seulement, pas encore branchée au serveur de course. |
+| BOT-03 | partiel | `src/lib/bots/engine.ts` | `src/lib/bots/engine.test.ts` | Correction obligatoire : la frappe fausse n'avance pas et la correction coûte 1,5 à 2,5 intervalles ; mode libre : erreur comptée, position avancée, un demi-intervalle de plus. Logique pure seulement, pas encore branchée au serveur de course. |
+| BOT-04 | partiel | `src/lib/bots/engine.ts` | `src/lib/bots/engine.test.ts` (texte modifié en cours de route) | Le moteur relit le texte et la position à chaque frappe : un bonus qui allonge ou réduit le texte s'applique au bot comme à un humain. **Manque** : bots dans la salle, identifiés comme tels dans l'interface, et soumis aux bonus par le serveur. |
+| BOT-05 | partiel | `src/lib/bots/random.ts`, `src/lib/bots/engine.ts` | `src/lib/bots/random.test.ts`, `src/lib/bots/engine.test.ts` | Générateur pseudo-aléatoire maison à graine, jamais `Math.random` : même graine et mêmes appels, même sortie (ADR 0015). **Manque** : graine fournie par le serveur de course. |
 
 ## 5.8 Bonus de remontée
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| BONUS-01 | non fait | — | — | Règle exacte à documenter. |
-| BONUS-02 | non fait | — | — | — |
+| BONUS-01 | partiel | `src/lib/race/bonus.ts` | `src/lib/race/bonus.test.ts` | Checkpoints au dépassement strict de 25, 50 et 75 % par le meneur, chacun une seule fois par course. En retard : dernier actif ou à strictement plus de 25 points du meneur ; le meneur, les arrivés et les abandons ne reçoivent rien. Un bonus par retardataire et checkpoint, au plus trois par joueur, tirage à graine. Logique pure seulement, pas encore branchée au serveur de course. |
+| BONUS-02 | partiel | `src/lib/race/bonus.ts` | `src/lib/race/bonus.test.ts` | Trois types : `minus3` (retire 3 mots à la fin du texte du retardataire, sans toucher le préfixe validé ni le mot en cours), `plus3` (ajoute 3 mots au texte du meneur), `fog` (brouillard de 4 s chez le meneur). Logique pure seulement, pas encore branchée au serveur de course. |
 | BONUS-03 | non fait | — | — | — |
-| BONUS-04 | non fait | — | — | — |
+| BONUS-04 | partiel | `src/lib/race/bonus.ts`, `src/lib/race/metrics.ts` | `src/lib/race/bonus.test.ts`, `src/lib/race/metrics.test.ts` | Progression calculée sur la longueur courante du texte ; MPM sur les caractères corrects tapés, indépendant de la longueur ; au moins un mot non terminé reste après un retrait ; texte terminé inchangé. Logique pure seulement, pas encore branchée au serveur de course. |
 
 ## 5.9 Résultats et statistiques
 
