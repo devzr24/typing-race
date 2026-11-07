@@ -7,7 +7,7 @@ import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
 import type { ErrorCode } from "@/i18n/messages";
 import { continueAsGuest, loginWithPassword, type FormState } from "@/lib/auth/actions";
-import { USERNAME_MAX_LENGTH } from "@/lib/auth/limits";
+import { GUEST_PSEUDO_MAX_LENGTH, GUEST_PSEUDO_MIN_LENGTH } from "@/lib/auth/limits";
 
 const initialState: FormState = {};
 
@@ -50,7 +50,9 @@ export function GuestForm() {
         id="pseudo"
         label={m.login.pseudo}
         autoComplete="off"
-        maxLength={USERNAME_MAX_LENGTH}
+        required
+        minLength={GUEST_PSEUDO_MIN_LENGTH}
+        maxLength={GUEST_PSEUDO_MAX_LENGTH}
         hint={format(m.login.pseudoHint)}
         defaultValue={state.values?.pseudo}
         error={state.fieldErrors?.pseudo && errorText(m, state.fieldErrors.pseudo)}

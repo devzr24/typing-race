@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { generateGuestName } from "./guest";
 import {
   findAvailableUsername,
   normalizeUsername,
@@ -79,15 +78,5 @@ describe("findAvailableUsername", () => {
     const result = await findAvailableUsername(base, takenIn([base]));
     expect(result).toBe(`${"a".repeat(22)}-2`);
     expect(validateUsername(result)).toBeNull();
-  });
-});
-
-describe("generateGuestName", () => {
-  it("produit un pseudo d'invité valide", () => {
-    for (let i = 0; i < 20; i++) {
-      const name = generateGuestName();
-      expect(name).toMatch(/^invite-\d{4}$/);
-      expect(validateUsername(name)).toBeNull();
-    }
   });
 });
