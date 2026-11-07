@@ -17,24 +17,24 @@ Socket.IO sur un serveur Node personnalisé (`server.ts`), hébergement Railway.
 
 ## Lancer en local
 
-Prérequis : Node.js 24, une base PostgreSQL.
+Prérequis : Node.js 24, Docker (pour PostgreSQL).
 
 ```bash
 npm install
+docker compose up -d --wait # PostgreSQL 17 sur localhost:5432 (docker-compose.yml)
 cp .env.example .env        # puis remplir les valeurs (voir les commentaires du fichier)
 npx prisma migrate dev      # crée les tables dans la base de DATABASE_URL
 npm run dev                 # http://localhost:3000
 ```
 
-Le port 3000 est celui enregistré pour les retours OAuth GitHub/Discord.
+Avec la base de `docker-compose.yml`, mettre dans `.env` :
 
-Base locale jetable avec Docker (facultatif) :
-
-```bash
-docker run -d --name typing-race-db -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
-  -e POSTGRES_DB=typing_race -p 5432:5432 postgres:17
-# DATABASE_URL="postgresql://dev:dev@localhost:5432/typing_race?schema=public"
 ```
+DATABASE_URL="postgresql://dev:dev@localhost:5432/typing_race?schema=public"
+```
+
+Les données sont conservées dans le volume `db-data` : `docker compose down` arrête la base,
+`docker compose down -v` l'efface. Le port 3000 est celui enregistré pour les retours OAuth GitHub/Discord.
 
 ## Commandes
 
