@@ -1,8 +1,8 @@
 import { roomCommandSchema, roomWatchSchema } from "@/lib/rooms/schemas";
 import { roomStore } from "@/lib/rooms/prisma-store";
-import { executeHostCommand, leaveRoom, toPublicRoom } from "@/lib/rooms/service";
+import { executeHostCommand, leaveRoom, listLobbyRooms, toPublicRoom } from "@/lib/rooms/service";
 import type { Identity } from "@/lib/rooms/types";
-import { publishRoom, roomChannel, type RealtimeServer } from "./realtime";
+import { connectedRoomKeys, publishRoom, removeRoomSockets, roomChannel, type RealtimeServer } from "./realtime";
 import { identityFromCookieHeader } from "./socket-identity";
 
 /**
@@ -11,7 +11,7 @@ import { identityFromCookieHeader } from "./socket-identity";
  */
 export const DEPARTURE_GRACE_MS = 30_000;
 
-type SocketData = { identity: Identity; watched: Set<string> };
+type SocketData = { identity: Identity | null; watched: Set<string> };
 
 export function registerRoomHandlers(io: RealtimeServer): void {
   const departures = new Map<string, NodeJS.Timeout>();
@@ -34,7 +34,7 @@ export function registerRoomHandlers(io: RealtimeServer): void {
       departures.delete(departureKey(code, key));
       try {
         if (await isStillConnected(code, key)) return;
-        if ((await leaveRoom(roomStore, code, key)) !== "not-in-room") await publishRoom(code);
+        if ((await leaveRoom(roomStore, code, key, await connectedRoomKeys(code))) !== "not-in-room") await publishRoom(code);
       } catch (error) {
         console.error(`> Départ automatique impossible (${code}) :`, error);
       }
@@ -46,7 +46,6 @@ export function registerRoomHandlers(io: RealtimeServer): void {
   io.use(async (socket, next) => {
     try {
       const identity = await identityFromCookieHeader(socket.request.headers.cookie);
-      if (!identity) return next(new Error("non-authentifie"));
       socket.data = { identity, watched: new Set<string>() } satisfies SocketData;
       next();
     } catch (error) {
@@ -57,6 +56,14 @@ export function registerRoomHandlers(io: RealtimeServer): void {
   io.on("connection", (socket) => {
     const data = socket.data as SocketData;
 
+    socket.on("lobby:watch", async (ack) => {
+      if (typeof ack !== "function") return;
+      try {
+        await socket.join("lobby");
+        ack(await listLobbyRooms(roomStore));
+      } catch (error) { console.error("> lobby:watch", error); }
+    });
+
     socket.on("room:command", async (payload, ack) => {
       if (typeof ack !== "function") return;
       try {
@@ -64,8 +71,12 @@ export function registerRoomHandlers(io: RealtimeServer): void {
         if (!parsed.success) return ack({ ok: false, error: "roomConfigInvalid" });
         // Relire la session : une connexion ouverte ne prolonge pas une session expirée.
         const identity = await identityFromCookieHeader(socket.request.headers.cookie);
-        if (!identity || identity.key !== data.identity.key) return ack({ ok: false, error: "loginRequired" });
-        ack(await executeHostCommand(roomStore, parsed.data.code, identity, parsed.data.command, publishRoom));
+        if (!identity || identity.key !== data.identity?.key) return ack({ ok: false, error: "loginRequired" });
+        const result = await executeHostCommand(roomStore, parsed.data.code, identity, parsed.data.command, publishRoom);
+        if (result.ok) {
+          if (result.kickedKey) await removeRoomSockets(parsed.data.code, result.kickedKey, "roomKicked");
+          ack({ ok: true, invites: result.invites, createdInvites: result.createdInvites });
+        } else ack(result);
       } catch (error) {
         console.error("> room:command :", error);
         ack({ ok: false, error: "serverError" });
@@ -78,16 +89,19 @@ export function registerRoomHandlers(io: RealtimeServer): void {
         const parsed = roomWatchSchema.safeParse(payload);
         if (!parsed.success) return ack({ ok: false, error: "roomCodeInvalid" });
         const { code } = parsed.data;
-        const room = await roomStore.findRoom(code);
-        if (!room) return ack({ ok: false, error: "roomClosed" });
-        const self = room.participants.find((p) => p.key === data.identity.key);
-        if (!self) {
-          return ack({ ok: false, error: "notInRoom" });
-        }
-        cancelDeparture(code, data.identity.key);
-        data.watched.add(code);
-        await socket.join(roomChannel(code));
-        ack({ ok: true, room: toPublicRoom(room), selfId: self.id });
+        const identity = await identityFromCookieHeader(socket.request.headers.cookie);
+        if (!identity || identity.key !== data.identity?.key) return ack({ ok: false, error: "loginRequired" });
+        // Même verrou que l'expulsion : aucun socket banni ne peut s'abonner entre retrait et diffusion.
+        await roomStore.withRoom(code, async (room) => {
+          if (!room) return ack({ ok: false, error: "roomClosed" });
+          if (room.bannedKeys.includes(identity.key)) return ack({ ok: false, error: "roomBanned" });
+          const self = room.participants.find((p) => p.key === identity.key);
+          if (!self) return ack({ ok: false, error: "notInRoom" });
+          cancelDeparture(code, identity.key);
+          data.watched.add(code);
+          await socket.join(roomChannel(code));
+          ack({ ok: true, room: toPublicRoom(room), selfId: self.id });
+        });
       } catch (error) {
         console.error("> room:watch :", error);
         ack({ ok: false, error: "serverError" });
@@ -95,6 +109,7 @@ export function registerRoomHandlers(io: RealtimeServer): void {
     });
 
     socket.on("disconnect", async () => {
+      if (!data.identity) return;
       for (const code of data.watched) {
         // Un autre onglet de la même personne est encore là : rien à faire.
         if (await isStillConnected(code, data.identity.key)) continue;

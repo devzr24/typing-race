@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { errorText } from "@/i18n/format";
 import type { ErrorCode, Messages } from "@/i18n/messages";
@@ -7,8 +8,13 @@ import { getMessages } from "@/i18n/server";
 import { normalizeRoomCode } from "@/lib/rooms/code";
 import { roomStore } from "@/lib/rooms/prisma-store";
 import { roomPathCodeSchema } from "@/lib/rooms/schemas";
-import { toPublicRoom } from "@/lib/rooms/service";
+import { joinRoom, toPublicRoom } from "@/lib/rooms/service";
+import { identityFromSession } from "@/lib/rooms/identity";
+import { clientIp } from "@/lib/auth/rate-limit";
+import { consumeCodeAttempt } from "@/lib/rooms/code-rate-limit";
+import { publishRoom } from "@/server/realtime";
 import { RoomView } from "./room-view";
+import { JoinRoomForm } from "@/app/home-actions";
 
 export async function generateMetadata({ params }: PageProps<"/room/[code]">): Promise<Metadata> {
   const [m, { code }] = await Promise.all([getMessages(), params]);
@@ -28,23 +34,33 @@ function Notice({ m, title, error }: { m: Messages; title: string; error: ErrorC
 }
 
 export default async function RoomPage({ params }: PageProps<"/room/[code]">) {
-  const [m, { code: rawCode }, session] = await Promise.all([getMessages(), params, auth()]);
+  const [m, { code: rawCode }] = await Promise.all([getMessages(), params]);
+  const session = await auth();
   const parsed = roomPathCodeSchema.safeParse(rawCode);
+  const membership = session?.user ? await roomStore.findMembership(session.user.id) : null;
+  // Un membre peut recharger sa salle sans consommer de tentative par code.
+  const allowed = (parsed.success && membership === parsed.data) || consumeCodeAttempt(clientIp(await headers()));
 
   let content;
-  if (!parsed.success) {
+  if (!allowed) {
+    content = <Notice m={m} title={m.room.notJoinedTitle} error="tooManyAttempts" />;
+  } else if (!parsed.success) {
     content = <Notice m={m} title={m.room.notFoundTitle} error="roomCodeInvalid" />;
   } else if (!session?.user) {
     content = <Notice m={m} title={m.room.loginRequiredTitle} error="loginRequiredForRoom" />;
   } else {
-    const room = await roomStore.findRoom(parsed.data);
+    const result = membership === parsed.data ? { ok: true as const, code: parsed.data }
+      : await joinRoom(roomStore, parsed.data, identityFromSession(session)!);
+    const room = result.ok ? await roomStore.findRoom(parsed.data) : null;
     const self = room?.participants.find((p) => p.key === session.user.id);
-    if (!room) {
+    if (!result.ok) {
+      content = <JoinRoomForm code={parsed.data} initialState={result} />;
+    } else if (!room) {
       content = <Notice m={m} title={m.room.notFoundTitle} error="roomNotFound" />;
     } else if (!self) {
-      // Pas d'arrivée par simple lien : on rejoint une salle avec son code, depuis l'accueil.
       content = <Notice m={m} title={m.room.notJoinedTitle} error="notInRoom" />;
     } else {
+      if (membership !== parsed.data) await publishRoom(parsed.data);
       content = <RoomView initialRoom={toPublicRoom(room)} selfId={self.id} />;
     }
   }

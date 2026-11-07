@@ -19,6 +19,11 @@ export const roomPathCodeSchema = z.string()
   })
   .pipe(roomCodeSchema);
 export const roomWatchSchema = z.object({ code: roomCodeSchema });
+export const inviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const roomAccessSchema = z.object({
+  visibility: z.enum(["PUBLIQUE", "SUR_CODE", "PRIVEE"]),
+  capacity: z.number().int().min(2).max(30),
+}).strict();
 
 // Caractères à taper : pas de caractère de contrôle (Postgres refuse l'octet nul).
 const typedChars = z.string().max(40).regex(/^[^\u0000-\u001f\u007f]*$/);
@@ -36,6 +41,10 @@ export const raceConfigSchema = z.object({
 
 export const hostCommandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("configure"), config: raceConfigSchema }).strict(),
+  z.object({ type: z.literal("configureAccess"), access: roomAccessSchema }).strict(),
+  z.object({ type: z.literal("createInvites"), count: z.number().int().min(1).max(30) }).strict(),
+  z.object({ type: z.literal("listInvites") }).strict(),
+  z.object({ type: z.literal("kick"), id: z.string().min(1).max(100) }).strict(),
   z.object({ type: z.literal("addBot"), level: z.enum(["NOOB", "BEGINNER", "INTERMEDIATE", "EXPERT", "IMPOSSIBLE"]) }).strict(),
   z.object({ type: z.literal("removeBot"), id: z.string().min(1).max(100) }).strict(),
   z.object({ type: z.literal("start") }).strict(),

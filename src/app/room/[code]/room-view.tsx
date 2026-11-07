@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -8,13 +9,13 @@ import { io, type Socket } from "socket.io-client";
 import { Avatar } from "@/components/avatar";
 import { useFeedback } from "@/components/effects";
 import { DecodedCode, useEffectsEnabled } from "@/components/motion-effects";
-import { buttonClass, primaryButtonClass } from "@/components/form-field";
+import { buttonClass, inputClass, primaryButtonClass } from "@/components/form-field";
 import { useI18n } from "@/i18n/client";
 import { errorText, format } from "@/i18n/format";
 import type { ErrorCode } from "@/i18n/messages";
 import { leaveRoomAction } from "@/lib/rooms/actions";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/events";
-import type { PublicParticipant, PublicRoom } from "@/lib/rooms/types";
+import type { CreatedInvite, PublicInvite, PublicParticipant, PublicRoom } from "@/lib/rooms/types";
 import type { HostCommand } from "@/lib/rooms/schemas";
 import { launchError } from "@/lib/rooms/state-machine";
 import { RaceCountdown, RoomConfiguration } from "./room-configuration";
@@ -23,11 +24,14 @@ type ConnectionState = "connecting" | "live" | "reconnecting";
 
 export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; selfId: string }) {
   const { m } = useI18n();
+  const router = useRouter();
   const [room, setRoom] = useState<PublicRoom | null>(initialRoom);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [error, setError] = useState<ErrorCode | null>(null);
   const [actionError, setActionError] = useState<ErrorCode | null>(null);
   const [pending, setPending] = useState(false);
+  const [invites, setInvites] = useState<PublicInvite[]>([]);
+  const [createdInvites, setCreatedInvites] = useState<CreatedInvite[]>([]);
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const code = initialRoom.code;
   const { play } = useFeedback();
@@ -36,6 +40,12 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
     socketRef.current = socket;
+    function refreshInvites(update: PublicRoom) {
+      if (!update.participants.some((p) => p.id === selfId && p.isHost)) return;
+      socket.emit("room:command", { code, command: { type: "listInvites" } }, (response) => {
+        if (response.ok && response.invites) setInvites(response.invites);
+      });
+    }
 
     // À chaque (re)connexion, on se réabonne à la salle : la place est conservée côté serveur.
     socket.on("connect", () => {
@@ -44,6 +54,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           setRoom(response.room);
           setError(null);
           setConnection("live");
+          refreshInvites(response.room);
         } else {
           setError(response.error);
         }
@@ -51,12 +62,14 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     });
     socket.on("disconnect", () => setConnection("reconnecting"));
     socket.on("connect_error", () => setConnection("reconnecting"));
+    socket.on("room:removed", (reason) => router.replace(`/?notice=${reason}`));
     socket.on("room:update", (update) => {
       // Son discret quand un joueur arrive (si le son est activé).
       const count = update?.participants.length ?? 0;
       if (count > participantCount.current) play("join");
       participantCount.current = count;
       setRoom(update);
+      if (update) refreshInvites(update);
       if (update && !update.participants.some((p) => p.id === selfId)) setError("noLongerInRoom");
     });
 
@@ -64,7 +77,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       socketRef.current = null;
       socket.disconnect();
     };
-  }, [code, selfId, play]);
+  }, [code, selfId, play, router]);
 
   function command(command: HostCommand) {
     const socket = socketRef.current;
@@ -75,6 +88,11 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       setPending(false);
       if (error || !response) setActionError("serverError");
       else if (!response.ok) setActionError(response.error);
+      else if (response.createdInvites) {
+        const created = response.createdInvites;
+        setCreatedInvites((previous) => [...previous, ...created]);
+        setInvites((previous) => [...previous.filter((p) => !created.some((i) => i.id === p.id)), ...created]);
+      }
     });
   }
 
@@ -102,7 +120,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           <DecodedCode code={room.code} className="font-mono text-4xl font-semibold tracking-[0.3em]" />
           <CopyButton text={room.code} />
         </div>
-        <p className="text-sm text-mist">{m.room.shareHint}</p>
+        <p className="text-sm text-mist">{room.visibility === "PRIVEE" ? m.room.privateHint : m.room.shareHint}</p>
       </section>
 
       <section className="flex flex-col gap-3" aria-labelledby="participants-title">
@@ -118,14 +136,35 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           {/* initial={false} : pas d'animation pour les joueurs déjà présents à l'ouverture. */}
           <AnimatePresence initial={false}>
             {room.participants.map((p) => (
-              <ParticipantRow key={p.id} participant={p} isSelf={p.id === selfId} />
+              <ParticipantRow key={p.id} participant={p} isSelf={p.id === selfId} kick={isHost && p.id !== selfId ? () => command({ type: "kick", id: p.id }) : undefined} disabled={pending || connection !== "live"} />
             ))}
           </AnimatePresence>
         </ul>
       </section>
 
       {actionError ? <p role="alert" className="text-alert">{errorText(m, actionError)}</p> : null}
-      <RoomConfiguration key={JSON.stringify(room.config)} room={room} editable={isHost && canConfigure && !pending && connection === "live"} command={command} />
+      {isHost ? <section className="flex flex-col gap-3" aria-labelledby="invites-title">
+        <h2 id="invites-title" className="text-lg font-medium">{m.room.invites}</h2>
+        <p className="text-sm text-mist">{m.room.inviteOnce}</p>
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          command({ type: "createInvites", count: Number(new FormData(event.currentTarget).get("count")) });
+        }} className="flex flex-col gap-2">
+          <label>{m.room.inviteCount}<input name="count" type="number" min={1} max={30} required defaultValue={1} className={inputClass} /></label>
+          <button className={buttonClass} disabled={pending || connection !== "live"}>{m.room.generateInvites}</button>
+        </form>
+        <ul className="flex flex-col gap-2">
+          {invites.map((invite, index) => {
+            const created = createdInvites.find((i) => i.id === invite.id);
+            return <li key={invite.id} className="flex flex-wrap items-center gap-2 rounded border border-line p-2">
+              <span>{format(m.room.inviteNumber, { number: index + 1 })}</span>
+              <span>{invite.revoked ? m.room.inviteRevoked : invite.used ? format(m.room.inviteUsed, { name: invite.usedByName ?? "" }) : m.room.inviteUnused}</span>
+              {created && !invite.revoked ? <CopyButton text={`${window.location.origin}/invite/${created.token}`} /> : null}
+            </li>;
+          })}
+        </ul>
+      </section> : null}
+      <RoomConfiguration key={JSON.stringify([room.config, room.visibility, room.capacity])} room={room} editable={isHost && canConfigure && !pending && connection === "live"} command={command} />
       <ul className="flex flex-col gap-2">
         {room.bots.map((bot) => (
           <li key={bot.id} className="flex items-center gap-3 rounded border border-line bg-card px-3 py-2">
@@ -161,7 +200,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
 const NEON_GLOW = "0 0 18px color-mix(in srgb, var(--color-neon) 60%, transparent)";
 const NO_GLOW = "0 0 0px color-mix(in srgb, var(--color-neon) 0%, transparent)";
 
-function ParticipantRow({ participant: p, isSelf }: { participant: PublicParticipant; isSelf: boolean }) {
+function ParticipantRow({ participant: p, isSelf, kick, disabled }: { participant: PublicParticipant; isSelf: boolean; kick?: () => void; disabled: boolean }) {
   const { m } = useI18n();
   const animated = useEffectsEnabled();
   // Chaque joueur dans une carte ; l'hôte est mis en valeur par une bordure neon.
@@ -179,6 +218,7 @@ function ParticipantRow({ participant: p, isSelf }: { participant: PublicPartici
       {isSelf ? <span className="text-sm text-ink/70">{m.room.you}</span> : null}
       {p.isGuest ? <span className="text-sm text-ink/70">{m.room.guest}</span> : null}
       {p.isSpectator ? <span className="text-sm text-ink/70">{m.room.spectator}</span> : null}
+      {kick ? <button className={buttonClass} disabled={disabled} onClick={kick}>{m.room.kick}</button> : null}
       {p.isHost ? (
         <span className="ml-auto rounded border border-neon bg-neon px-2 py-0.5 text-xs font-semibold text-night">
           {m.room.host}

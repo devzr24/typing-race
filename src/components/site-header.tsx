@@ -22,6 +22,7 @@ export async function SiteHeader({ theme }: { theme: Theme | null }) {
         </span>
       </Link>
       <div className="flex flex-wrap items-center gap-2">
+        <Link href="/salles" className={buttonClass}>{m.lobby.title}</Link>
         <LanguageSelect />
         <ThemeSelect theme={theme} />
         <SoundToggle />

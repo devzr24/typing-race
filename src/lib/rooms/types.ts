@@ -1,4 +1,17 @@
 export type RoomStatus = "EN_ATTENTE" | "DECOMPTE" | "EN_COURSE" | "RESULTATS" | "FERMEE";
+export type RoomVisibility = "PUBLIQUE" | "SUR_CODE" | "PRIVEE";
+
+export type RoomInvite = {
+  id: string;
+  tokenHash: string;
+  usedByKey: string | null;
+  usedByName: string | null;
+  usedIp: string | null;
+  usedAt: Date | null;
+  revokedAt: Date | null;
+};
+export type PublicInvite = Pick<RoomInvite, "id" | "usedByName"> & { used: boolean; revoked: boolean };
+export type CreatedInvite = PublicInvite & { token: string };
 
 /** Qui agit : un utilisateur inscrit ou un invité, tel que décrit par sa session Auth.js. */
 export type Identity = {
@@ -52,6 +65,9 @@ export type Room = {
   createdAt: Date;
   participants: Participant[];
   capacity: number;
+  visibility: RoomVisibility;
+  invites: RoomInvite[];
+  bannedKeys: string[];
   config: RaceConfig;
   bots: RoomBot[];
 };
@@ -69,9 +85,18 @@ export type PublicParticipant = {
 export type PublicRoom = {
   code: string;
   status: RoomStatus;
+  capacity: number;
+  visibility: RoomVisibility;
   participants: PublicParticipant[];
   config: RaceConfig;
   bots: RoomBot[];
   race: Race | null;
   serverNow: number;
+};
+
+export type LobbyRoom = Pick<PublicRoom, "code" | "status" | "capacity"> & {
+  count: number;
+  textLanguage: RaceConfig["textLanguage"];
+  complexity: RaceConfig["complexity"];
+  hostName: string;
 };
