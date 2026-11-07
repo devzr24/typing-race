@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { auth } from "@/auth";
 import { buttonClass } from "@/components/form-field";
 import { getMessages } from "@/i18n/server";
 import { signInWithProvider } from "@/lib/auth/actions";
@@ -11,7 +13,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${m.login.title} — ${m.app.name}` };
 }
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { error } = await searchParams;
+  if (error === undefined && await auth()) redirect("/");
   const m = await getMessages();
   const providers = [
     { id: "github", label: m.login.github },

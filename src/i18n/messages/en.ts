@@ -100,10 +100,12 @@ export const en: Messages = {
     passwordTooLong: "The password cannot exceed {passwordMax} characters.",
     passwordMismatch: "The passwords do not match.",
     invalidLogin: "Incorrect username or password.",
+    tooManyAttempts: "Too many attempts. Try again in a few minutes.",
     guestFailed: "Could not continue as guest. Please try again.",
     oauthAccessDenied: "Login denied.",
     oauthConfiguration: "Login is misconfigured on the server. Please try again later.",
     oauthFailed: "Login failed. Please try again.",
+    oauthAlreadySignedIn: "You are already signed in: sign out before signing in with another account.",
     loginRequired: "Log in or continue as guest to play.",
     roomCodeRequired: "Enter the room code.",
     roomCodeInvalid:

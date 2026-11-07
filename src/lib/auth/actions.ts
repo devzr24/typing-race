@@ -1,10 +1,12 @@
 "use server";
 
-import { AuthError } from "next-auth";
+import { AuthError, CredentialsSignin } from "next-auth";
+import { headers } from "next/headers";
 import { Prisma } from "@/generated/prisma/client";
 import { signIn, signOut } from "@/auth";
 import type { ErrorCode } from "@/i18n/messages";
-import { hashPassword, validatePassword } from "@/lib/auth/password";
+import { hashPassword, ScryptQueueFullError, validatePassword } from "@/lib/auth/password";
+import { authRateLimiter, clientIp } from "@/lib/auth/rate-limit";
 import { normalizeUsername, validateUsername } from "@/lib/auth/username";
 import { prisma } from "@/lib/prisma";
 
@@ -42,6 +44,9 @@ export async function loginWithPassword(_prev: FormState, formData: FormData): P
     await signIn("credentials", { username, password, redirectTo: "/" });
   } catch (error) {
     // signIn lance une redirection en cas de succès : seule une AuthError est un échec.
+    if (error instanceof CredentialsSignin && error.code === "rate_limited") {
+      return { error: "tooManyAttempts", values };
+    }
     if (error instanceof AuthError) return { error: "invalidLogin", values };
     throw error;
   }
@@ -62,11 +67,16 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   else if (password !== confirm) fieldErrors.confirm = "passwordMismatch";
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors, values };
 
+  if (!authRateLimiter.consume(`register:ip:${clientIp(await headers())}`, 5, 60 * 60_000)) {
+    return { error: "tooManyAttempts", values };
+  }
+
   try {
     await prisma.user.create({
       data: { username, passwordHash: await hashPassword(password) },
     });
   } catch (error) {
+    if (error instanceof ScryptQueueFullError) return { error: "tooManyAttempts", values };
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return { fieldErrors: { username: "usernameTaken" }, values };
     }
@@ -74,8 +84,7 @@ export async function register(_prev: FormState, formData: FormData): Promise<Fo
   }
 
   // Compte créé : on connecte directement l'utilisateur.
-  await signIn("credentials", { username, password, redirectTo: "/" });
-  return {};
+  return loginWithPassword(_prev, formData);
 }
 
 export async function continueAsGuest(_prev: FormState, formData: FormData): Promise<FormState> {

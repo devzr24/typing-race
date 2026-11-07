@@ -15,13 +15,41 @@ const SCRYPT_PARAMS = { N: 2 ** 17, r: 8, p: 1 } as const;
 const KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
 
-function deriveKey(password: string, salt: Buffer, params: { N: number; r: number; p: number }) {
-  const options: ScryptOptions = { ...params, maxmem: 256 * params.N * params.r };
-  return new Promise<Buffer>((resolve, reject) => {
-    scrypt(password.normalize("NFKC"), salt, KEY_LENGTH, options, (err, key) =>
-      err ? reject(err) : resolve(key),
-    );
-  });
+export class ScryptQueueFullError extends Error {
+  constructor() {
+    super("La file de calculs scrypt est pleine.");
+    this.name = "ScryptQueueFullError";
+  }
+}
+
+const SCRYPT_QUEUE_KEY = Symbol.for("typing-race.scrypt-queue");
+type GlobalWithScryptQueue = typeof globalThis & {
+  [SCRYPT_QUEUE_KEY]?: { active: number; waiting: Array<() => void> };
+};
+const scryptQueue = (globalThis as GlobalWithScryptQueue)[SCRYPT_QUEUE_KEY]
+  ??= { active: 0, waiting: [] };
+
+async function deriveKey(password: string, salt: Buffer, params: { N: number; r: number; p: number }) {
+  if (scryptQueue.active >= 2) {
+    if (scryptQueue.waiting.length >= 8) throw new ScryptQueueFullError();
+    await new Promise<void>((resolve) => scryptQueue.waiting.push(resolve));
+  } else {
+    scryptQueue.active++;
+  }
+
+  try {
+    const options: ScryptOptions = { ...params, maxmem: 256 * params.N * params.r };
+    return await new Promise<Buffer>((resolve, reject) => {
+      scrypt(password.normalize("NFKC"), salt, KEY_LENGTH, options, (err, key) =>
+        err ? reject(err) : resolve(key),
+      );
+    });
+  } finally {
+    // Le prochain calcul reprend la place libérée, sans dépasser le plafond.
+    const next = scryptQueue.waiting.shift();
+    if (next) next();
+    else scryptQueue.active--;
+  }
 }
 
 /**

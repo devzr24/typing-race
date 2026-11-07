@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { getMessages } from "@/i18n/server";
 import { RegisterForm } from "./register-form";
 
@@ -9,6 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RegisterPage() {
+  if (await auth()) redirect("/");
   const m = await getMessages();
   return (
     <main className="mx-auto flex w-full max-w-sm flex-col gap-6 px-4 py-10">

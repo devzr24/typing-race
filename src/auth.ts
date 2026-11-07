@@ -1,4 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { AdapterError, OAuthAccountNotLinked } from "@auth/core/errors";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 import Credentials from "next-auth/providers/credentials";
@@ -7,7 +8,9 @@ import GitHub from "next-auth/providers/github";
 import { randomUUID } from "node:crypto";
 import { Prisma, type User } from "@/generated/prisma/client";
 import { generateGuestName } from "@/lib/auth/guest";
-import { hashPassword, validatePassword, verifyPassword } from "@/lib/auth/password";
+import { canLinkAccount } from "@/lib/auth/account-linking";
+import { hashPassword, ScryptQueueFullError, validatePassword, verifyPassword } from "@/lib/auth/password";
+import { authRateLimiter, clientIp } from "@/lib/auth/rate-limit";
 import {
   findAvailableUsername,
   normalizeUsername,
@@ -20,12 +23,19 @@ class InvalidLoginError extends CredentialsSignin {
   code = "invalid_login";
 }
 
+class RateLimitedError extends CredentialsSignin {
+  code = "rate_limited";
+}
+
 // Hachage factice : on vérifie quand même un mot de passe si le nom n'existe pas,
 // pour que le temps de réponse ne révèle pas quels noms sont inscrits.
 // Calculé au premier besoin (pas au chargement du module, qui a lieu pendant le pré-rendu).
 let dummyHashPromise: Promise<string> | undefined;
 function getDummyHash(): Promise<string> {
-  dummyHashPromise ??= hashPassword(randomUUID());
+  dummyHashPromise ??= hashPassword(randomUUID()).catch((error) => {
+    dummyHashPromise = undefined;
+    throw error;
+  });
   return dummyHashPromise;
 }
 
@@ -63,12 +73,30 @@ const adapter: Adapter = {
   },
   // On ne conserve pas les jetons d'accès GitHub/Discord : on n'appelle pas leurs API.
   async linkAccount({ userId, type, provider, providerAccountId }) {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true, _count: { select: { accounts: true } } },
+    });
+    if (!canLinkAccount(user.passwordHash, user._count.accounts)) {
+      throw new OAuthAccountNotLinked();
+    }
     await prisma.account.create({ data: { userId, type, provider, providerAccountId } });
   },
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
+  logger: {
+    error(error) {
+      // Auth.js enveloppe les erreurs d'adaptateur : conserver le code public attendu.
+      // Dépend de l'ordre interne d'Auth.js : le logger précède la lecture d'error.type.
+      // auth.test.ts vérifie cet ordre à chaque mise à jour d'@auth/core.
+      if (error instanceof AdapterError && error.cause?.err instanceof OAuthAccountNotLinked) {
+        error.type = error.cause.err.type;
+      }
+      console.error(error);
+    },
+  },
   // Les connexions par mot de passe imposent des sessions JWT (cookie chiffré).
   session: { strategy: "jwt" },
   // Railway place l'application derrière un proxy : on fait confiance à l'en-tête Host transmis.
@@ -105,15 +133,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       id: "credentials",
       credentials: { username: {}, password: {} },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const username = normalizeUsername(String(credentials.username ?? ""));
         const password = String(credentials.password ?? "");
+        if (!authRateLimiter.consume(`login:ip:${clientIp(request.headers)}`, 20, 10 * 60_000)) {
+          throw new RateLimitedError();
+        }
         if (validateUsername(username) || validatePassword(password)) {
           throw new InvalidLoginError();
         }
+        const usernameKey = `login:username:${username}`;
+        if (authRateLimiter.isLimited(usernameKey, 10)) {
+          throw new RateLimitedError();
+        }
         const user = await prisma.user.findUnique({ where: { username } });
-        const valid = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
-        if (!user?.passwordHash || !valid) throw new InvalidLoginError();
+        let valid: boolean;
+        try {
+          valid = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
+        } catch (error) {
+          if (error instanceof ScryptQueueFullError) throw new RateLimitedError();
+          throw error;
+        }
+        if (!user?.passwordHash || !valid) {
+          authRateLimiter.consume(usernameKey, 10, 10 * 60_000);
+          throw new InvalidLoginError();
+        }
+        authRateLimiter.reset(usernameKey);
         return { id: user.id, username: user.username, name: user.name, image: user.image };
       },
     }),

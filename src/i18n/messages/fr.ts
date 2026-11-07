@@ -100,10 +100,12 @@ export const fr = {
     passwordTooLong: "Le mot de passe ne peut pas dépasser {passwordMax} caractères.",
     passwordMismatch: "Les mots de passe ne correspondent pas.",
     invalidLogin: "Nom d'utilisateur ou mot de passe incorrect.",
+    tooManyAttempts: "Trop de tentatives. Réessaie dans quelques minutes.",
     guestFailed: "Impossible de continuer en invité. Réessaie.",
     oauthAccessDenied: "Connexion refusée.",
     oauthConfiguration: "La connexion est mal configurée sur le serveur. Réessaie plus tard.",
     oauthFailed: "La connexion a échoué. Réessaie.",
+    oauthAlreadySignedIn: "Tu es déjà connecté : déconnecte-toi avant de te connecter avec un autre compte.",
     loginRequired: "Connecte-toi ou continue en invité pour jouer.",
     roomCodeRequired: "Entre le code de la salle.",
     roomCodeInvalid:
