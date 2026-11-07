@@ -67,6 +67,9 @@ jobs:
       - name: Migrations (base de test)
         run: npx prisma migrate deploy
 
+      - name: Corpus et dictionnaire (seed)
+        run: npm run db:seed
+
       - name: Navigateur Playwright
         run: npx playwright install --with-deps chromium
 

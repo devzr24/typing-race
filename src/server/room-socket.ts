@@ -105,8 +105,10 @@ export function registerRoomHandlers(io: RealtimeServer): void {
 
   // Après un redémarrage (déploiement), les minuteries sont perdues : chaque participant
   // enregistré a le délai de grâce pour se reconnecter, sinon il est retiré de la salle.
+  // Les courses en cours sont perdues avec la mémoire : leurs salles reviennent en attente.
   roomStore
-    .listMemberships()
+    .resetInterruptedRaces()
+    .then(() => roomStore.listMemberships())
     .then((memberships) => memberships.forEach(({ code, key }) => scheduleDeparture(code, key)))
     .catch((error) => console.error("> Lecture des salles au démarrage impossible :", error));
 }

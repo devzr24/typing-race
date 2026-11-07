@@ -31,7 +31,7 @@ describe("validation de la configuration", () => {
   it.each([
     { timeLimitSec: 29 }, { timeLimitSec: 601 }, { timeLimitSec: 30.5 }, { timeLimitSec: "30" },
     { wordCount: 9 }, { wordCount: 201 }, { wordCount: 10.5 },
-    { includeChars: "a".repeat(41) }, { excludeChars: "a".repeat(41) },
+    { includeChars: "a".repeat(41) }, { excludeChars: "a".repeat(41) }, { includeChars: "a\u0000" },
     { textLanguage: "DE" }, { textType: "invalid" }, { complexity: "invalid" },
     { errorMode: "invalid" }, { bonusesEnabled: "true" }, { capacity: 30 },
   ])("refuse %j", (change) => {

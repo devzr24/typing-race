@@ -107,6 +107,17 @@ export class PrismaRoomStore implements RoomStore {
     });
   }
 
+  /**
+   * Courses interrompues par un redémarrage : le texte et les minuteries vivaient en mémoire.
+   * Les salles en décompte ou en course reviennent en attente.
+   */
+  async resetInterruptedRaces(): Promise<void> {
+    await this.db.room.updateMany({
+      where: { status: { in: ["DECOMPTE", "EN_COURSE"] } },
+      data: { status: "EN_ATTENTE" },
+    });
+  }
+
   /** Toutes les présences enregistrées (utilisé au démarrage du serveur). */
   async listMemberships(): Promise<{ code: string; key: string }[]> {
     const rows = await this.db.roomParticipant.findMany({

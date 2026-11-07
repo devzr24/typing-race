@@ -20,6 +20,9 @@ export const roomPathCodeSchema = z.string()
   .pipe(roomCodeSchema);
 export const roomWatchSchema = z.object({ code: roomCodeSchema });
 
+// Caractères à taper : pas de caractère de contrôle (Postgres refuse l'octet nul).
+const typedChars = z.string().max(40).regex(/^[^\u0000-\u001f\u007f]*$/);
+
 export const raceConfigSchema = z.object({
   timeLimitSec: z.number().int().min(30).max(600).nullable(),
   textLanguage: z.enum(["FR", "EN"]),
@@ -27,7 +30,7 @@ export const raceConfigSchema = z.object({
   wordCount: z.number().int().min(10).max(200),
   complexity: z.enum(["FACILE", "MOYEN", "DIFFICILE"]),
   punctuation: z.boolean(), numbers: z.boolean(), capitals: z.boolean(), accents: z.boolean(),
-  includeChars: z.string().max(40), excludeChars: z.string().max(40),
+  includeChars: typedChars, excludeChars: typedChars,
   errorMode: z.enum(["CORRECTION", "LIBRE"]), bonusesEnabled: z.boolean(),
 }).strict();
 
