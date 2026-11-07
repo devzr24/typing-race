@@ -36,6 +36,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const code = initialRoom.code;
   const { play } = useFeedback();
   const participantCount = useRef(initialRoom.participants.length);
+  // Départ volontaire : la redirection vient de l'action, pas de l'avis « plus dans la salle ».
+  const leaving = useRef(false);
 
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
@@ -62,7 +64,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     });
     socket.on("disconnect", () => setConnection("reconnecting"));
     socket.on("connect_error", () => setConnection("reconnecting"));
-    socket.on("room:removed", (reason) => router.replace(`/?notice=${reason}`));
+    socket.on("room:removed", (reason) => { if (!leaving.current) router.replace(`/?notice=${reason}`); });
     socket.on("room:update", (update) => {
       // Son discret quand un joueur arrive (si le son est activé).
       const count = update?.participants.length ?? 0;
@@ -187,7 +189,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "close" })}>{m.room.close}</button>
       </div> : null}
 
-      <form action={leaveRoomAction}>
+      <form action={leaveRoomAction} onSubmit={() => { leaving.current = true; }}>
         <input type="hidden" name="code" value={room.code} />
         <button type="submit" className={buttonClass}>
           {m.room.leave}
