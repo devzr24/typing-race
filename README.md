@@ -7,6 +7,9 @@ Nom, palette et polices provisoires : la direction artistique viendra plus tard.
 
 **Production :** https://typing-race-production-4a76.up.railway.app
 
+**Comptes de démonstration** (créés par le seed, partagés, sans privilège) : `demo` et `demo2`,
+mot de passe `TypingRace-demo-2026!`.
+
 Déjà disponible : connexion GitHub / Discord / nom d'utilisateur ou en invité, salles rejointes
 par code avec liste des participants en temps réel, site en français et en anglais, thème clair et foncé.
 
@@ -23,6 +26,7 @@ Prérequis : Node.js 24, une base PostgreSQL.
 npm install
 cp .env.example .env        # puis remplir les valeurs (voir les commentaires du fichier)
 npx prisma migrate dev      # crée les tables dans la base de DATABASE_URL
+npm run db:seed             # corpus de textes et comptes de démonstration (relançable)
 npm run dev                 # http://localhost:3000
 ```
 

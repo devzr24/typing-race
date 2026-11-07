@@ -45,6 +45,22 @@ erDiagram
         boolean isSpectator "hôte spectateur seulement (SALLE-01)"
         datetime joinedAt "ordre d'arrivée (transfert d'hôte)"
     }
+    Passage {
+        string id PK
+        string slug UK "identifiant stable pour le seed"
+        enum language "FR | EN"
+        string title "œuvre"
+        string author
+        string content "texte exact, domaine public"
+        int wordCount
+        datetime createdAt
+    }
+    Word {
+        string id PK
+        enum language "FR | EN ; unique avec value"
+        string value "minuscules"
+        int frequencyRank "1 = le plus fréquent"
+    }
 ```
 
 | Table | Rôle |
@@ -53,6 +69,8 @@ erDiagram
 | `Account` | Lien entre un utilisateur et son compte GitHub ou Discord (format de l'adaptateur Prisma d'Auth.js) ; aucun jeton d'accès conservé. |
 | `Room` | Salle rejointe par code, avec son état et son hôte ; supprimée quand le dernier participant part ([ADR 0006](../adr/0006-salles-transfert-hote.md)). |
 | `RoomParticipant` | Présence d'un utilisateur ou d'un invité dans une salle ; `joinedAt` décide du prochain hôte ; `isSpectator` marque l'hôte qui a choisi de seulement regarder (SALLE-01). |
+| `Passage` | Corpus du mode cohérent (CONF-03) : extraits du domaine public, FR et EN, chargés par le seed ([ADR 0013](../adr/0013-seed-au-demarrage.md)). Pas encore utilisé par l'application. |
+| `Word` | Dictionnaire du mode aléatoire (CONF-03) : environ 1000 mots courants par langue, classés par fréquence (rang approximatif). Pas encore utilisé par l'application. |
 
 Remarques :
 
@@ -75,7 +93,7 @@ erDiagram
     Room ||--o{ RoomInvite : "lien d'invitation (SALLE-04)"
     Room ||--o{ RoomBan : "expulsion (SALLE-07)"
     Room ||--o{ Race : "organise (COURSE-01)"
-    Passage ||--o{ Race : "texte cohérent (CONF-03)"
+    Passage ||--o{ Race : "texte cohérent (CONF-03), table déjà créée"
     Race ||--|{ RaceResult : "produit (RES-05)"
     User |o--o{ RaceResult : "historique (HIST-01)"
 
@@ -100,11 +118,6 @@ erDiagram
     RoomBan {
         string roomId FK
         string key "personne expulsée"
-    }
-    Passage {
-        string id PK
-        string language
-        string content "corpus du domaine public (seed, TECH-04)"
     }
     Race {
         string id PK
