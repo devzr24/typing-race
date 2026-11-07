@@ -14,6 +14,8 @@ export default defineConfig({
   use: {
     baseURL: externalBaseURL ?? `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    // Les tests attendent les textes français ; la langue du navigateur décide sans cookie (I18N-02).
+    locale: "fr-FR",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // Serveur de production (server.ts : Next.js + Socket.IO) ; `npm run build` doit être fait avant.

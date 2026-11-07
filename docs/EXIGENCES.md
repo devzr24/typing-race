@@ -10,8 +10,8 @@ Mise à jour : 2026-11-07.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 15 |
-| Partiel | 21 |
+| Complet | 16 |
+| Partiel | 20 |
 | Non fait | 54 |
 | **Total** | **90** |
 
@@ -149,7 +149,7 @@ Mise à jour : 2026-11-07.
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
 | I18N-01 | complet | `src/i18n/messages/fr.ts`, `src/i18n/messages/en.ts` | `src/i18n/messages.test.ts` | Libellés, erreurs (codes `ErrorCode`) et métadonnées des pages (`generateMetadata`) en FR et EN (ADR 0009). |
-| I18N-02 | partiel | `src/components/preferences.tsx`, `src/i18n/server.ts` | `e2e/room.spec.ts` (langue et thème) | Sélecteur dans l'en-tête de toutes les pages, choix conservé dans un cookie. **Écart** : sans cookie, le français est utilisé au lieu de la langue du navigateur (`Accept-Language`). |
+| I18N-02 | complet | `src/components/preferences.tsx`, `src/i18n/server.ts`, `src/i18n/accept-language.ts` | `src/i18n/accept-language.test.ts`, `e2e/langue.spec.ts`, `e2e/room.spec.ts` (langue et thème) | Sélecteur dans l'en-tête de toutes les pages, choix conservé dans un cookie. Sans cookie, la langue suit `Accept-Language`, puis le français (ADR 0014). |
 | I18N-03 | partiel | `src/i18n/format.ts` | — | Aucune date ni statistique n'est encore affichée ; le formatage `Intl` selon la langue reste à mettre en place. |
 
 ## 6.1 Tests
@@ -191,7 +191,7 @@ Mise à jour : 2026-11-07.
 |---|---|---|
 | Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race. Accès de l'enseignant à confirmer ; commits à poursuivre régulièrement. |
 | URL de production | complet | https://typing-race-production-4a76.up.railway.app |
-| `README.md` | partiel | Comptes de démonstration et commande de seed indiqués. Manque : captures d'écran, PostgreSQL via Docker Compose. |
+| `README.md` | partiel | PostgreSQL via Docker Compose (`docker-compose.yml`), comptes de démonstration et commande de seed. Manque : captures d'écran. |
 | `docs/ARCHITECTURE.md` | partiel | Version initiale : vue d'ensemble, modèle de données, machine à états, ADR temps réel, flux temps réel actuels et prévus, approche prévue pour les bots. Manque pour la remise finale : ADR sur les bots, flux de course réels. |
 | `docs/EXIGENCES.md` | complet | Ce fichier. |
 | `docs/DEMARCHE-CREATIVE.md` | non fait | Voir DES-01 à DES-03. |
