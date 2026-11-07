@@ -9,7 +9,10 @@ Prisma 7 ([ADR 0003](../adr/0003-prisma-postgresql.md)).
 erDiagram
     User ||--o{ Account : "se connecte via"
     User |o--o{ RoomParticipant : "participe (inscrit)"
-    Room ||--|{ RoomParticipant : "contient"
+    Room ||--o{ RoomParticipant : "contient"
+    Room ||--o{ RoomBot : "bots (CONF-10)"
+    Room ||--o{ RoomInvite : "liens d'invitation (SALLE-04)"
+    Room ||--o{ RoomBan : "expulsions (SALLE-07)"
 
     User {
         string id PK "cuid"
@@ -30,14 +33,49 @@ erDiagram
     Room {
         string id PK
         string code UK "6 caractères sans 0/O/1/I/L"
-        enum status "EN_ATTENTE | EN_COURSE | TERMINEE"
+        enum status "EN_ATTENTE | DECOMPTE | EN_COURSE | RESULTATS | FERMEE"
         string hostKey "clé du participant hôte"
+        datetime createdAt
+        enum visibility "PUBLIQUE | SUR_CODE | PRIVEE (SALLE-03)"
+        int capacity "2 à 30, spectateurs exclus (SALLE-05)"
+        int timeLimitSec "null ou 30 à 600 (CONF-01)"
+        enum textLanguage "FR | EN (CONF-02)"
+        enum textType "COHERENT | ALEATOIRE (CONF-03)"
+        int wordCount "CONF-04"
+        enum complexity "FACILE | MOYEN | DIFFICILE (CONF-05)"
+        boolean punctuation "CONF-06, comme numbers, capitals, accents"
+        string includeChars "CONF-07, comme excludeChars"
+        enum errorMode "CORRECTION | LIBRE (CONF-08)"
+        boolean bonusesEnabled "CONF-09"
+    }
+    RoomBot {
+        string id PK
+        string roomId FK
+        enum level "NOOB | BEGINNER | INTERMEDIATE | EXPERT | IMPOSSIBLE"
+        string name
+        datetime createdAt
+    }
+    RoomInvite {
+        string id PK
+        string roomId FK
+        string tokenHash UK "SHA-256 du jeton, jamais le jeton"
+        string usedByKey "personne liée à la première utilisation"
+        string usedByName
+        string usedIp "IP liée à la première utilisation"
+        datetime usedAt
+        datetime revokedAt "participant expulsé"
+        datetime createdAt
+    }
+    RoomBan {
+        string id PK
+        string roomId FK "unique avec key"
+        string key "personne expulsée"
         datetime createdAt
     }
     RoomParticipant {
         string id PK
         string roomId FK
-        string key "id utilisateur ou guest-uuid ; unique avec roomId"
+        string key UK "id utilisateur ou guest-uuid ; une seule salle par personne (SALLE-06)"
         string userId FK "null pour un invité"
         string displayName
         string image
@@ -67,8 +105,11 @@ erDiagram
 |---|---|
 | `User` | Utilisateur inscrit, par GitHub/Discord ou par nom d'utilisateur + mot de passe ; aucun courriel stocké ([ADR 0004](../adr/0004-authentification-authjs.md)). |
 | `Account` | Lien entre un utilisateur et son compte GitHub ou Discord (format de l'adaptateur Prisma d'Auth.js) ; aucun jeton d'accès conservé. |
-| `Room` | Salle rejointe par code, avec son état et son hôte ; supprimée quand le dernier participant part ([ADR 0006](../adr/0006-salles-transfert-hote.md)). |
+| `Room` | Salle rejointe par code, avec son état son hôte, sa visibilité, sa capacité et la configuration de course choisie par l'hôte (CONF-01 à 09) ; supprimée quand le dernier participant part ([ADR 0006](../adr/0006-salles-transfert-hote.md)). |
 | `RoomParticipant` | Présence d'un utilisateur ou d'un invité dans une salle ; `joinedAt` décide du prochain hôte ; `isSpectator` marque l'hôte qui a choisi de seulement regarder (SALLE-01). |
+| `RoomBot` | Bot ajouté par l'hôte (CONF-10) : compte dans la capacité, jamais hôte ; niveaux de l'[ADR 0015](../adr/0015-moteur-des-bots.md). |
+| `RoomInvite` | Lien d'invitation à usage unique (SALLE-04) : seule l'empreinte du jeton est stockée ; IP et personne liées à la première utilisation. |
+| `RoomBan` | Personne expulsée d'une salle (SALLE-07). |
 | `Passage` | Corpus du mode cohérent (CONF-03) : extraits du domaine public, FR et EN, chargés par le seed ([ADR 0013](../adr/0013-seed-au-demarrage.md)). Pas encore utilisé par l'application. |
 | `Word` | Dictionnaire du mode aléatoire (CONF-03) : environ 1000 mots courants par langue, classés par fréquence (rang approximatif). Pas encore utilisé par l'application. |
 
@@ -89,36 +130,11 @@ l'exigence qui la demande.
 
 ```mermaid
 erDiagram
-    Room ||--o| RoomSettings : "configure (CONF-01..12)"
-    Room ||--o{ RoomInvite : "lien d'invitation (SALLE-04)"
-    Room ||--o{ RoomBan : "expulsion (SALLE-07)"
     Room ||--o{ Race : "organise (COURSE-01)"
     Passage ||--o{ Race : "texte cohérent (CONF-03), table déjà créée"
     Race ||--|{ RaceResult : "produit (RES-05)"
     User |o--o{ RaceResult : "historique (HIST-01)"
 
-    RoomSettings {
-        string roomId FK
-        enum visibility "SALLE-03"
-        int capacity "2 à 30, spectateurs exclus (SALLE-05)"
-        int maxSeconds "null ou 30 à 600 (CONF-01)"
-        string textLanguage "fr | en (CONF-02)"
-        enum textType "COHERENT | ALEATOIRE (CONF-03)"
-        int wordCount "CONF-04"
-        enum complexity "CONF-05"
-        string options "ponctuation, nombres, majuscules, accents, caractères (CONF-06, CONF-07)"
-        enum errorMode "OBLIGATOIRE | LIBRE (CONF-08)"
-        boolean bonuses "CONF-09"
-        string bots "niveaux des bots (CONF-10)"
-    }
-    RoomInvite {
-        string token UK "un lien par invité"
-        string roomId FK
-    }
-    RoomBan {
-        string roomId FK
-        string key "personne expulsée"
-    }
     Race {
         string id PK
         string roomId FK

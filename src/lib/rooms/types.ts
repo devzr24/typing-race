@@ -1,4 +1,4 @@
-export type RoomStatus = "EN_ATTENTE" | "EN_COURSE" | "TERMINEE";
+export type RoomStatus = "EN_ATTENTE" | "DECOMPTE" | "EN_COURSE" | "RESULTATS" | "FERMEE";
 
 /** Qui agit : un utilisateur inscrit ou un invité, tel que décrit par sa session Auth.js. */
 export type Identity = {
