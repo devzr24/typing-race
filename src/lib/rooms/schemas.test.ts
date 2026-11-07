@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { hostRoleSchema, roomCodeSchema, roomPathCodeSchema, roomWatchSchema } from "./schemas";
+import { hostRoleSchema, roomCodeSchema, roomCommandSchema, roomPathCodeSchema, roomWatchSchema } from "./schemas";
 
 describe("schémas des salles", () => {
+  it.each([
+    null, {}, { code: "ABCDEF" }, { code: "invalid", command: { type: "start" } },
+    { code: "ABCDEF", command: { type: "addBot", level: "invalid" } },
+    { code: "ABCDEF", command: { type: "removeBot", id: "" } },
+    { code: "ABCDEF", command: { type: "start", hostKey: "forged" } },
+    { code: "ABCDEF", command: { type: "start" }, identity: { key: "forged" } },
+  ])("refuse une commande invalide ou une identité fournie par le client : %j", (payload) => {
+    expect(roomCommandSchema.safeParse(payload).success).toBe(false);
+  });
+
   it.each([null, undefined, "ABCDEF", 42, [], {}, { code: "bad" }, { code: 123456 },
     { code: null }, { code: ["ABCDEF"] },
   ])("rejette room:watch invalide : %j", (payload) => {

@@ -19,3 +19,28 @@ export const roomPathCodeSchema = z.string()
   })
   .pipe(roomCodeSchema);
 export const roomWatchSchema = z.object({ code: roomCodeSchema });
+
+// Caractères à taper : pas de caractère de contrôle (Postgres refuse l'octet nul).
+const typedChars = z.string().max(40).regex(/^[^\u0000-\u001f\u007f]*$/);
+
+export const raceConfigSchema = z.object({
+  timeLimitSec: z.number().int().min(30).max(600).nullable(),
+  textLanguage: z.enum(["FR", "EN"]),
+  textType: z.enum(["COHERENT", "ALEATOIRE"]),
+  wordCount: z.number().int().min(10).max(200),
+  complexity: z.enum(["FACILE", "MOYEN", "DIFFICILE"]),
+  punctuation: z.boolean(), numbers: z.boolean(), capitals: z.boolean(), accents: z.boolean(),
+  includeChars: typedChars, excludeChars: typedChars,
+  errorMode: z.enum(["CORRECTION", "LIBRE"]), bonusesEnabled: z.boolean(),
+}).strict();
+
+export const hostCommandSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("configure"), config: raceConfigSchema }).strict(),
+  z.object({ type: z.literal("addBot"), level: z.enum(["NOOB", "BEGINNER", "INTERMEDIATE", "EXPERT", "IMPOSSIBLE"]) }).strict(),
+  z.object({ type: z.literal("removeBot"), id: z.string().min(1).max(100) }).strict(),
+  z.object({ type: z.literal("start") }).strict(),
+  z.object({ type: z.literal("reset") }).strict(),
+  z.object({ type: z.literal("close") }).strict(),
+]);
+export type HostCommand = z.infer<typeof hostCommandSchema>;
+export const roomCommandSchema = z.object({ code: roomCodeSchema, command: hostCommandSchema }).strict();

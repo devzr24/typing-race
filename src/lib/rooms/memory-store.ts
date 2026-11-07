@@ -1,5 +1,6 @@
 import { CodeTakenError, type LockedRoom, type RoomStore } from "./store";
 import type { Identity, Participant, Room } from "./types";
+import { defaultRaceConfig } from "./types";
 
 /** Stockage en mémoire pour les tests : même comportement que la version Prisma. */
 export class MemoryRoomStore implements RoomStore {
@@ -29,6 +30,9 @@ export class MemoryRoomStore implements RoomStore {
       hostKey: host.key,
       createdAt: this.now(),
       participants: [this.participant(host, isSpectator)],
+      capacity: 8,
+      config: { ...defaultRaceConfig },
+      bots: [],
     };
     this.rooms.set(code, room);
     return structuredClone(room);
@@ -48,6 +52,10 @@ export class MemoryRoomStore implements RoomStore {
       setHost: async (key) => {
         room!.hostKey = key;
       },
+      setStatus: async (status) => { room!.status = status; },
+      setConfig: async (config) => { room!.config = { ...config }; },
+      addBot: async (level, name) => { room!.bots.push({ id: `b${this.nextId++}`, level, name }); },
+      removeBot: async (id) => { room!.bots = room!.bots.filter((bot) => bot.id !== id); },
       deleteRoom: async () => {
         this.rooms.delete(code);
       },

@@ -1,6 +1,6 @@
-import { roomWatchSchema } from "@/lib/rooms/schemas";
+import { roomCommandSchema, roomWatchSchema } from "@/lib/rooms/schemas";
 import { roomStore } from "@/lib/rooms/prisma-store";
-import { leaveRoom, toPublicRoom } from "@/lib/rooms/service";
+import { executeHostCommand, leaveRoom, toPublicRoom } from "@/lib/rooms/service";
 import type { Identity } from "@/lib/rooms/types";
 import { publishRoom, roomChannel, type RealtimeServer } from "./realtime";
 import { identityFromCookieHeader } from "./socket-identity";
@@ -57,6 +57,21 @@ export function registerRoomHandlers(io: RealtimeServer): void {
   io.on("connection", (socket) => {
     const data = socket.data as SocketData;
 
+    socket.on("room:command", async (payload, ack) => {
+      if (typeof ack !== "function") return;
+      try {
+        const parsed = roomCommandSchema.safeParse(payload);
+        if (!parsed.success) return ack({ ok: false, error: "roomConfigInvalid" });
+        // Relire la session : une connexion ouverte ne prolonge pas une session expirée.
+        const identity = await identityFromCookieHeader(socket.request.headers.cookie);
+        if (!identity || identity.key !== data.identity.key) return ack({ ok: false, error: "loginRequired" });
+        ack(await executeHostCommand(roomStore, parsed.data.code, identity, parsed.data.command, publishRoom));
+      } catch (error) {
+        console.error("> room:command :", error);
+        ack({ ok: false, error: "serverError" });
+      }
+    });
+
     socket.on("room:watch", async (payload, ack) => {
       if (typeof ack !== "function") return;
       try {
@@ -90,8 +105,10 @@ export function registerRoomHandlers(io: RealtimeServer): void {
 
   // Après un redémarrage (déploiement), les minuteries sont perdues : chaque participant
   // enregistré a le délai de grâce pour se reconnecter, sinon il est retiré de la salle.
+  // Les courses en cours sont perdues avec la mémoire : leurs salles reviennent en attente.
   roomStore
-    .listMemberships()
+    .resetInterruptedRaces()
+    .then(() => roomStore.listMemberships())
     .then((memberships) => memberships.forEach(({ code, key }) => scheduleDeparture(code, key)))
     .catch((error) => console.error("> Lecture des salles au démarrage impossible :", error));
 }

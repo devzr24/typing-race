@@ -1,10 +1,14 @@
-import type { Identity, Participant, Room } from "./types";
+import type { Identity, Participant, RaceConfig, Room, RoomBot, RoomStatus } from "./types";
 
 /** Opérations possibles sur une salle verrouillée (voir RoomStore.withRoom). */
 export interface LockedRoom {
   addParticipant(identity: Identity): Promise<Participant>;
   removeParticipant(key: string): Promise<void>;
   setHost(key: string): Promise<void>;
+  setStatus(status: RoomStatus): Promise<void>;
+  setConfig(config: RaceConfig): Promise<void>;
+  addBot(level: RoomBot["level"], name: string): Promise<void>;
+  removeBot(id: string): Promise<void>;
   deleteRoom(): Promise<void>;
 }
 

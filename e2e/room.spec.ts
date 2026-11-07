@@ -75,6 +75,47 @@ test("deux navigateurs : arrivée et départ visibles en direct chez l'hôte", a
   await playerContext.close();
 });
 
+test("configuration et décompte synchronisés dans deux navigateurs", async ({ browser }) => {
+  const hostContext = await browser.newContext();
+  const playerContext = await browser.newContext();
+  try {
+    const host = await hostContext.newPage();
+    const player = await playerContext.newPage();
+    await registerHost(host);
+    const code = await createRoom(host);
+    await continueAsGuest(player, "course-e2e");
+    await player.getByLabel("Rejoindre avec un code").fill(code);
+    await player.getByRole("button", { name: "Rejoindre", exact: true }).click();
+    await expect(player).toHaveURL(`/room/${code}`);
+    await expect(host.getByText("En direct", { exact: true })).toBeVisible();
+    await expect(player.getByText("En direct", { exact: true })).toBeVisible();
+    await host.getByLabel("Niveau du bot").selectOption("EXPERT");
+    await host.getByRole("button", { name: "Ajouter un bot" }).click();
+    await expect(player.getByText("bot", { exact: true })).toBeVisible();
+    await expect(player.getByRole("listitem").filter({ hasText: "Bot-" })).toContainText("Expert");
+    await host.getByLabel("Type de texte").selectOption("ALEATOIRE");
+    await host.getByLabel("Nombre de mots").fill("40");
+    await host.getByRole("button", { name: "Enregistrer la configuration" }).click();
+    await expect(player.getByLabel("Nombre de mots")).toHaveValue("40");
+    await expect(player.getByLabel("Type de texte")).toHaveValue("ALEATOIRE");
+    await expect(player.getByLabel("Nombre de mots")).toBeDisabled();
+    await host.getByRole("button", { name: "Lancer la course" }).click();
+    await Promise.all([
+      expect(host.getByRole("status", { name: "Décompte" })).toBeVisible(),
+      expect(player.getByRole("status", { name: "Décompte" })).toBeVisible(),
+    ]);
+    await expect(host.getByRole("region", { name: "Texte de la course" })).toBeVisible();
+    await expect(player.getByRole("region", { name: "Texte de la course" })).toHaveText(
+      await host.getByRole("region", { name: "Texte de la course" }).innerText(),
+    );
+    await host.getByRole("button", { name: "Fermer la salle" }).click();
+    await expect(player.getByRole("main").getByRole("alert")).toHaveText("Cette salle a été fermée.");
+  } finally {
+    await hostContext.close();
+    await playerContext.close();
+  }
+});
+
 test("un invité ne peut pas créer de salle", async ({ page }) => {
   await continueAsGuest(page);
   await expect(page.getByRole("button", { name: "Créer une salle" })).toHaveCount(0);

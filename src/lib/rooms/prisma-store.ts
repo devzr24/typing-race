@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CodeTakenError, type LockedRoom, type RoomStore } from "./store";
 import type { Identity, Room } from "./types";
 
-const withParticipants = { participants: true } as const;
+const withParticipants = { participants: true, bots: { orderBy: { createdAt: "asc" } } } as const;
 type RoomRow = Prisma.RoomGetPayload<{ include: typeof withParticipants }>;
 
 function toRoom(row: RoomRow): Room {
@@ -12,6 +12,15 @@ function toRoom(row: RoomRow): Room {
     status: row.status,
     hostKey: row.hostKey,
     createdAt: row.createdAt,
+    capacity: row.capacity,
+    config: {
+      timeLimitSec: row.timeLimitSec, textLanguage: row.textLanguage, textType: row.textType,
+      wordCount: row.wordCount, complexity: row.complexity, punctuation: row.punctuation,
+      numbers: row.numbers, capitals: row.capitals, accents: row.accents,
+      includeChars: row.includeChars, excludeChars: row.excludeChars,
+      errorMode: row.errorMode, bonusesEnabled: row.bonusesEnabled,
+    },
+    bots: row.bots.map(({ id, name, level }) => ({ id, name, level })),
     participants: row.participants.map((p) => ({
       id: p.id,
       key: p.key,
@@ -78,11 +87,34 @@ export class PrismaRoomStore implements RoomStore {
         setHost: async (key) => {
           await tx.room.update({ where: { id: roomId }, data: { hostKey: key } });
         },
+        setStatus: async (status) => {
+          await tx.room.update({ where: { id: roomId }, data: { status } });
+        },
+        setConfig: async (config) => {
+          await tx.room.update({ where: { id: roomId }, data: config });
+        },
+        addBot: async (level, name) => {
+          await tx.roomBot.create({ data: { roomId, level, name } });
+        },
+        removeBot: async (id) => {
+          await tx.roomBot.deleteMany({ where: { roomId, id } });
+        },
         deleteRoom: async () => {
           await tx.room.delete({ where: { id: roomId } });
         },
       };
       return fn(row ? toRoom(row) : null, locked);
+    });
+  }
+
+  /**
+   * Courses interrompues par un redémarrage : le texte et les minuteries vivaient en mémoire.
+   * Les salles en décompte ou en course reviennent en attente.
+   */
+  async resetInterruptedRaces(): Promise<void> {
+    await this.db.room.updateMany({
+      where: { status: { in: ["DECOMPTE", "EN_COURSE"] } },
+      data: { status: "EN_ATTENTE" },
     });
   }
 
