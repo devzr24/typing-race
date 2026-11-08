@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { characterState, initialTypingState, predictKeys, reduceTyping } from "./typing-state";
+import { characterState, committedInput, initialTypingState, predictKeys, reduceTyping } from "./typing-state";
 
 const self = { text: "abc def", position: 0, errors: 0, fogUntil: 0 };
 
@@ -42,12 +42,27 @@ describe("prédiction de frappe", () => {
     expect(state.pending).toBe("");
   });
 
-  it("reprend à la position serveur et retire les paquets refusés", () => {
+  it("conserve les frappes refusées pour débit avant leur nouvelle tentative", () => {
     let state = initialTypingState({ ...self, position: 4, errors: 2 });
     state = reduceTyping(state, { type: "keys", keys: "de" }, "CORRECTION");
     state = reduceTyping(state, { type: "ack", through: 2, response: { ok: false, error: "raceTooFast" } }, "CORRECTION");
     expect(state.base.position).toBe(4);
     expect(state.base.errors).toBe(2);
+    expect(state.pending).toBe("de");
+    expect(state.acknowledged).toBe(0);
+    state = reduceTyping(state, { type: "ack", through: 2, response: { ok: true, position: 6, errors: 2 } }, "CORRECTION");
     expect(state.pending).toBe("");
+    expect(state.base.position).toBe(6);
+  });
+
+  it("attend la fin des accents morts et de la composition IME", () => {
+    expect(committedInput("´", true, "insertCompositionText")).toBeNull();
+    expect(committedInput("é", true, "insertCompositionText")).toBeNull();
+    expect(committedInput("é", false, "insertFromComposition")).toBe("é");
+    expect(committedInput("漢", true, "insertCompositionText")).toBeNull();
+    expect(committedInput("漢字", false, "insertFromComposition")).toBe("漢字");
+    expect(committedInput("a", false, "insertText")).toBe("a");
+    expect(committedInput("collé", false, "insertFromPaste")).toBe("");
+    expect(committedInput("déposé", false, "insertFromDrop")).toBe("");
   });
 });

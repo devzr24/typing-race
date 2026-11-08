@@ -132,6 +132,7 @@ export const en: Messages = {
     confirmAbandon: "Abandon this race? Your progress will be frozen.",
     statuses: { racing: "Racing", finished: "Finished", abandoned: "Abandoned", timeout: "Time up" },
     bonuses: { minus3: "−3 words", plus3: "+3 words for the leader", fog: "Fog" },
+    triggeredBonus: "triggered: {bonus}",
   },
   lobby: {
     title: "Public rooms",

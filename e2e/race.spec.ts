@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+// Chaque test simule un client distinct : la limite de 5 inscriptions par IP et par heure (SEC-03)
+// s'appliquerait sinon à toute la suite, qui tourne depuis la même machine.
+test.beforeEach(async ({ page }) => {
+  const octet = () => Math.floor(Math.random() * 254) + 1;
+  await page.setExtraHTTPHeaders({ "x-forwarded-for": `10.${octet()}.${octet()}.${octet()}` });
+});
+
 async function startShortRace(page: Page) {
   await page.goto("/register");
   await page.getByLabel("Nom d'utilisateur", { exact: true }).fill(`course-${crypto.randomUUID().slice(0, 18)}`);
@@ -13,7 +20,7 @@ async function startShortRace(page: Page) {
   await page.getByRole("button", { name: "Ajouter un bot" }).click();
   await expect(page.getByText("bot", { exact: true })).toBeVisible();
   await page.getByLabel("Type de texte").selectOption("ALEATOIRE");
-  await page.getByLabel("Complexité", { exact: true }).selectOption("FACILE");
+  await page.getByLabel("Complexité").selectOption("FACILE");
   await page.getByLabel("Nombre de mots").fill("10");
   for (const name of ["Ponctuation", "Chiffres", "Majuscules", "Accents", "Bonus activés"]) {
     await page.getByLabel(name, { exact: true }).uncheck();
@@ -61,4 +68,24 @@ test("coller et déposer ne font pas progresser le joueur", async ({ page }) => 
   await input.focus();
   await page.keyboard.type(text[0]);
   await expect(page.getByRole("region", { name: "Texte de la course" }).locator("span").first()).toHaveClass(/text-cyan/);
+});
+
+test("abandon avec confirmation puis résultats quand le bot Impossible finit", async ({ page }) => {
+  test.setTimeout(60000);
+  await startShortRace(page);
+  const abandon = page.getByRole("button", { name: "Abandonner", exact: true });
+  await abandon.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByLabel("Zone de frappe", { exact: true })).toBeEnabled();
+  await abandon.click();
+  await dialog.getByRole("button", { name: "Abandonner", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Résultat provisoire" })).toContainText("Abandon");
+  await expect(page.getByLabel("Zone de frappe", { exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Résultat provisoire" })).toContainText("Abandon");
+  await expect(page.getByLabel("Zone de frappe", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Résultats de la course" })).toBeVisible({ timeout: 30000 });
 });

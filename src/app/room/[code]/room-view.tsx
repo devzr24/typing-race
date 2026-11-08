@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { io, type Socket } from "socket.io-client";
@@ -41,6 +41,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const [clockOffset, setClockOffset] = useState(0);
   const [raceConnection, setRaceConnection] = useState<{ socket: Socket<ServerToClientEvents, ClientToServerEvents>; revision: number } | null>(null);
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  const raceStartsAt = useRef(initialRoom.race?.startsAt ?? 0);
+  const number = useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }), [locale]);
   const code = initialRoom.code;
   const { play } = useFeedback();
   const participantCount = useRef(initialRoom.participants.length);
@@ -65,6 +67,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           setError(null);
           setConnection("live");
           setRaceSelf(response.self ?? null);
+          setSnapshot(response.raceSnapshot ?? null);
+          raceStartsAt.current = response.room.race?.startsAt ?? 0;
           setClockOffset(response.room.serverNow - Date.now());
           setRaceConnection((previous) => ({ socket, revision: (previous?.revision ?? 0) + 1 }));
           refreshInvites(response.room);
@@ -89,7 +93,9 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       if (count > participantCount.current) play("join");
       participantCount.current = count;
       setRoom(update);
-      if (update?.status === "DECOMPTE" || update?.status === "EN_ATTENTE") {
+      if (update?.race) raceStartsAt.current = update.race.startsAt;
+      // Une mise à jour antérieure au départ peut suivre race:self.
+      if (update?.status === "EN_ATTENTE" && raceStartsAt.current > 0 && update.serverNow >= raceStartsAt.current) {
         setRaceSelf(null);
         setSnapshot(null);
         setBonuses([]);
@@ -211,7 +217,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         {!isSpectator && selfRacer && selfRacer.status !== "racing" ? <section aria-label={m.race.provisional} className="rounded border border-line bg-card p-4">
           <h2 className="text-lg font-medium">{m.race.provisional}</h2>
           <p>{m.race.statuses[selfRacer.status]}</p>
-          <p>{m.race.netMpm}: {new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(selfRacer.mpm)}</p>
+          <p>{m.race.netMpm}: {number.format(selfRacer.mpm)}</p>
         </section> : room.status === "EN_COURSE" && !isSpectator && raceSelf && raceConnection ? <TypingZone
           key={`${room.race.startsAt}:${raceConnection.revision}`} self={raceSelf} selfId={selfId} code={code}
           startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}

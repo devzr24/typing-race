@@ -5,7 +5,7 @@ import type { Identity } from "@/lib/rooms/types";
 import { connectedRoomKeys, publishRoom, raceSelfChannel, removeRoomSockets, roomChannel, type RealtimeServer } from "./realtime";
 import { identityFromCookieHeader } from "./socket-identity";
 import { activeRaces } from "@/lib/rooms/race-memory";
-import { raceSelf } from "@/lib/race/engine";
+import { raceSelf, raceSnapshot } from "@/lib/race/engine";
 
 /**
  * Délai avant de considérer qu'un participant déconnecté a quitté la salle (ADR 0006).
@@ -152,7 +152,9 @@ export function registerRoomHandlers(io: RealtimeServer): void {
           if (!self.isSpectator) await socket.join(raceSelfChannel(code, self.id));
           const state = activeRaces.get(code)?.state;
           const currentSelf = state && !self.isSpectator ? raceSelf(state, self.id) : undefined;
-          ack({ ok: true, room: toPublicRoom(room), selfId: self.id, ...(currentSelf ? { self: currentSelf } : {}) });
+          ack({ ok: true, room: toPublicRoom(room), selfId: self.id, ...(currentSelf ? { self: currentSelf } : {}),
+            ...(state && room.status === "EN_COURSE" ? { raceSnapshot: raceSnapshot(state, Date.now()) } : {}),
+          });
         });
       } catch (error) {
         console.error("> room:watch :", error);

@@ -132,6 +132,7 @@ export const fr = {
     confirmAbandon: "Abandonner cette course ? Ta progression sera figée.",
     statuses: { racing: "En course", finished: "Arrivé", abandoned: "Abandon", timeout: "Temps écoulé" },
     bonuses: { minus3: "−3 mots", plus3: "+3 mots pour le meneur", fog: "Brouillard" },
+    triggeredBonus: "a déclenché : {bonus}",
   },
   lobby: {
     title: "Salles publiques",

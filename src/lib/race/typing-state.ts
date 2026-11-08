@@ -3,6 +3,11 @@ import type { RaceConfig } from "@/lib/rooms/types";
 import type { RaceInputResponse } from "@/lib/rooms/events";
 
 type ErrorMode = RaceConfig["errorMode"];
+
+export function committedInput(value: string, composing: boolean, inputType: string): string | null {
+  if (composing) return null;
+  return inputType === "insertFromPaste" || inputType === "insertFromDrop" ? "" : value;
+}
 export type Prediction = RaceSelf & { currentError: boolean; wrongPositions: number[] };
 export type TypingState = { base: Prediction; pending: string; acknowledged: number };
 export type TypingAction =
@@ -39,6 +44,7 @@ export function reduceTyping(state: TypingState, action: TypingAction, mode: Err
     } };
   }
   if (action.through <= state.acknowledged) return state;
+  if (!action.response.ok && action.response.error === "raceTooFast") return state;
   const count = action.through - state.acknowledged;
   let base = state.base;
   if (action.response.ok) {
