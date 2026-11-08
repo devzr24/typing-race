@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { startShortRace } from "./helpers/race";
+import { launchRace, prepareRace, startShortRace } from "./helpers/race";
 
 // Chaque test simule un client distinct : la limite de 5 inscriptions par IP et par heure (SEC-03)
 // s'appliquerait sinon à toute la suite, qui tourne depuis la même machine.
@@ -34,6 +34,59 @@ test("course complète avec un bot et arrivée du joueur", async ({ page }) => {
   await expect(page).toHaveURL(/\/races\/[^/]+$/);
   await expect(page.getByRole("table", { name: "Classement complet" }).locator("tbody tr")).toHaveText(rows);
   await expect(page.getByRole("region", { name: "Podium", exact: true })).toHaveText(podiumText ?? "");
+});
+
+test("COURSE-08 — reprendre après rechargement conserve la progression et permet l’arrivée", async ({ page }) => {
+  test.setTimeout(60000);
+  await prepareRace(page, { wordCount: 40, botLevels: ["NOOB"] });
+  await launchRace(page);
+  const self = page.getByRole("region", { name: "Piste de course" }).getByRole("listitem")
+    .filter({ has: page.getByText("vous", { exact: true }) });
+  const input = page.getByLabel("Zone de frappe", { exact: true });
+  const text = await page.getByRole("region", { name: "Texte de la course" }).innerText();
+  // La dernière frappe change le pourcentage arrondi, donc son affichage confirme tout le préfixe.
+  const position = Math.ceil(text.length * 0.245);
+  expect(Math.round((position - 1) / text.length * 100)).toBeLessThan(Math.round(position / text.length * 100));
+  const percentage = new RegExp(`^${Math.round(position / text.length * 100)}\\s*%$`);
+  await input.focus();
+  await page.keyboard.type(text.slice(0, position), { delay: 50 });
+  // La piste reflète la position confirmée par le serveur, avant le rechargement.
+  await expect(self.getByText(percentage)).toBeVisible();
+  await expect(self.getByText("En course", { exact: true })).toBeVisible();
+  const disconnectedAt = Date.now();
+  await page.reload();
+  await expect(input).toBeVisible({ timeout: 10000 });
+  await expect(input).toBeEnabled({ timeout: 10000 });
+  await expect(self.getByText(percentage)).toBeVisible();
+  await expect(self.getByText("En course", { exact: true })).toBeVisible();
+  expect(Date.now() - disconnectedAt).toBeLessThan(30000);
+  await input.focus();
+  await page.keyboard.type(text.slice(position), { delay: 50 });
+  await expect(self.getByText("Arrivé", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Résultat provisoire" })).toContainText("Arrivé");
+});
+
+test("BONUS-03 — annonce du bonus au joueur retardataire", async ({ page }) => {
+  test.setTimeout(60000);
+  await prepareRace(page, { wordCount: 100, bonusesEnabled: true });
+  await launchRace(page);
+  const track = page.getByRole("region", { name: "Piste de course" });
+  const self = track.getByRole("listitem").filter({ has: page.getByText("vous", { exact: true }) });
+  const bot = track.getByRole("listitem").filter({ has: page.getByText("bot", { exact: true }) });
+  const text = await page.getByRole("region", { name: "Texte de la course" }).innerText();
+  await page.getByLabel("Zone de frappe", { exact: true }).focus();
+  await page.keyboard.type(text[0]);
+  await expect(bot.getByText(/^[1-9]\d*\s*%$/)).toBeVisible();
+  await expect(self.getByText("En course", { exact: true })).toBeVisible();
+  // engine.ts consomme les seuils lorsque le meneur les franchit, même si le dernier reste sous 25 %.
+  await expect(self.getByText(/^(?:a déclenché : )?(?:−3 mots|\+3 mots pour le meneur|Brouillard)$/))
+    .toBeVisible({ timeout: 30000 });
+  // Le joueur franchit ensuite lui-même 25 %, quelle que soit la modification de son texte.
+  const currentText = await page.getByRole("region", { name: "Texte de la course" }).innerText();
+  const position = Math.ceil(currentText.length * 0.26);
+  await page.keyboard.type(currentText.slice(1, position), { delay: 100 });
+  await expect(self.getByText(/^(?:2[6-9]|[3-9]\d|100)\s*%$/)).toBeVisible();
+  await expect(self.getByText("En course", { exact: true })).toBeVisible();
 });
 
 test("coller et déposer ne font pas progresser le joueur", async ({ page }) => {

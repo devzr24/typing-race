@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
-export async function prepareRace(page: Page, { wordCount = 10, capacity, botLevels = ["IMPOSSIBLE"] }: {
-  wordCount?: number; capacity?: number; botLevels?: string[];
+export async function prepareRace(page: Page, { wordCount = 10, capacity, botLevels = ["IMPOSSIBLE"], bonusesEnabled = false }: {
+  wordCount?: number; capacity?: number; botLevels?: string[]; bonusesEnabled?: boolean;
 } = {}) {
   await page.goto("/register");
   await page.getByLabel("Nom d'utilisateur", { exact: true }).fill(`course-${crypto.randomUUID().slice(0, 18)}`);
@@ -25,9 +25,10 @@ export async function prepareRace(page: Page, { wordCount = 10, capacity, botLev
   await page.getByLabel("Type de texte").selectOption("ALEATOIRE");
   await page.getByLabel("Complexité").selectOption("FACILE");
   await page.getByLabel("Nombre de mots").fill(String(wordCount));
-  for (const name of ["Ponctuation", "Chiffres", "Majuscules", "Accents", "Bonus activés"]) {
+  for (const name of ["Ponctuation", "Chiffres", "Majuscules", "Accents"]) {
     await page.getByLabel(name, { exact: true }).uncheck();
   }
+  await page.getByLabel("Bonus activés", { exact: true }).setChecked(bonusesEnabled);
   await page.getByRole("button", { name: "Enregistrer la configuration" }).click();
   await expect(page.getByLabel("Nombre de mots")).toHaveValue(String(wordCount));
   await expect(page.getByRole("button", { name: "Lancer la course" })).toBeEnabled();
