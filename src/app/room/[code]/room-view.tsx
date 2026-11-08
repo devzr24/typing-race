@@ -152,6 +152,16 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const selfRacer = racers.find((racer) => racer.id === selfId);
   const isSpectator = room.participants.some((p) => p.id === selfId && p.isSpectator);
 
+  // En attente, les actions suivent la configuration ; pendant la course et aux résultats, elles restent en haut.
+  const hostActions = isHost ? <div className="flex flex-wrap gap-3">
+        {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
+          <button className={primaryButtonClass} disabled={!!startError || pending || connection !== "live"} aria-describedby={startError ? "start-reason" : undefined} onClick={() => command({ type: "start" })}>{m.room.start}</button>
+          {startError ? <p id="start-reason" className="text-sm text-mist">{errorText(m, startError)}</p> : null}
+        </div> : null}
+        {room.status === "RESULTATS" ? <button className={primaryButtonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "reset" })}>{m.room.newRace}</button> : null}
+        <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "close" })}>{m.room.close}</button>
+      </div> : null;
+
   return (
     <>
       <section className="flex flex-col gap-2">
@@ -163,6 +173,22 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         <p className="text-sm text-mist">{room.visibility === "PRIVEE" ? m.room.privateHint : m.room.shareHint}</p>
       </section>
 
+      {room.status === "DECOMPTE" && room.race ? <RaceCountdown key={room.race.startsAt} startsAt={room.race.startsAt} serverNow={room.serverNow} /> : null}
+      {(room.status === "EN_COURSE" || room.status === "RESULTATS") && room.race ? <>
+        {!isSpectator && selfRacer && selfRacer.status !== "racing" ? <section aria-label={m.race.provisional} className="rounded border border-line bg-card p-4">
+          <h2 className="text-lg font-medium">{m.race.provisional}</h2>
+          <p>{m.race.statuses[selfRacer.status]}</p>
+          <p>{m.race.netMpm}: {number.format(selfRacer.mpm)}</p>
+        </section> : room.status === "EN_COURSE" && !isSpectator && raceSelf && raceConnection ? <TypingZone
+          key={`${room.race.startsAt}:${raceConnection.revision}`} self={raceSelf} selfId={selfId} code={code}
+          startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
+          socket={raceConnection.socket} connected={connection === "live"} /> : null}
+        {/* Zone de frappe d'abord : le joueur garde son texte en haut, même avec 30 coureurs sur la piste. */}
+        <RaceTrack racers={racers} selfId={selfId} bonuses={bonuses} />
+      </> : null}
+      {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} canOpen={room.participants.some((p) => p.id === selfId && !p.isGuest)} /> : null}
+      {room.status !== "EN_ATTENTE" ? hostActions : null}
+      {actionError ? <p role="alert" className="text-alert">{errorText(m, actionError)}</p> : null}
       <section className="flex flex-col gap-3" aria-labelledby="participants-title">
         <div className="flex items-baseline justify-between">
           <h2 id="participants-title" className="text-lg font-medium">
@@ -182,7 +208,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         </ul>
       </section>
 
-      {actionError ? <p role="alert" className="text-alert">{errorText(m, actionError)}</p> : null}
+      {/* Pendant le décompte et la course, la configuration verrouillée et les invitations laissent la place à la course. */}
+      {room.status === "DECOMPTE" || room.status === "EN_COURSE" ? null : <>
       {isHost ? <section className="flex flex-col gap-3" aria-labelledby="invites-title">
         <h2 id="invites-title" className="text-lg font-medium">{m.room.invites}</h2>
         <p className="text-sm text-mist">{m.room.inviteOnce}</p>
@@ -215,27 +242,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           </li>
         ))}
       </ul>
-      {room.status === "DECOMPTE" && room.race ? <RaceCountdown key={room.race.startsAt} startsAt={room.race.startsAt} serverNow={room.serverNow} /> : null}
-      {(room.status === "EN_COURSE" || room.status === "RESULTATS") && room.race ? <>
-        <RaceTrack racers={racers} selfId={selfId} bonuses={bonuses} />
-        {!isSpectator && selfRacer && selfRacer.status !== "racing" ? <section aria-label={m.race.provisional} className="rounded border border-line bg-card p-4">
-          <h2 className="text-lg font-medium">{m.race.provisional}</h2>
-          <p>{m.race.statuses[selfRacer.status]}</p>
-          <p>{m.race.netMpm}: {number.format(selfRacer.mpm)}</p>
-        </section> : room.status === "EN_COURSE" && !isSpectator && raceSelf && raceConnection ? <TypingZone
-          key={`${room.race.startsAt}:${raceConnection.revision}`} self={raceSelf} selfId={selfId} code={code}
-          startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
-          socket={raceConnection.socket} connected={connection === "live"} /> : null}
-      </> : null}
-      {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} canOpen={room.participants.some((p) => p.id === selfId && !p.isGuest)} /> : null}
-      {isHost ? <div className="flex flex-wrap gap-3">
-        {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
-          <button className={primaryButtonClass} disabled={!!startError || pending || connection !== "live"} aria-describedby={startError ? "start-reason" : undefined} onClick={() => command({ type: "start" })}>{m.room.start}</button>
-          {startError ? <p id="start-reason" className="text-sm text-mist">{errorText(m, startError)}</p> : null}
-        </div> : null}
-        {room.status === "RESULTATS" ? <button className={primaryButtonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "reset" })}>{m.room.newRace}</button> : null}
-        <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "close" })}>{m.room.close}</button>
-      </div> : null}
+      </>}
+      {room.status === "EN_ATTENTE" ? hostActions : null}
 
       <form action={leaveRoomAction} onSubmit={() => { leaving.current = true; }}>
         <input type="hidden" name="code" value={room.code} />
