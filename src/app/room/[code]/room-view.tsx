@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Check, Copy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { io, type Socket } from "socket.io-client";
@@ -19,9 +19,9 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/eve
 import type { CreatedInvite, PublicInvite, PublicParticipant, PublicRoom } from "@/lib/rooms/types";
 import type { HostCommand } from "@/lib/rooms/schemas";
 import { launchError } from "@/lib/rooms/state-machine";
-import type { RaceSelf, RaceSnapshot } from "@/lib/race/engine";
+import type { RaceSelf } from "@/lib/race/engine";
 import { RaceCountdown, RoomConfiguration } from "./room-configuration";
-import { RaceTrack, type TrackBonus } from "./race-track";
+import { createRaceStore, RaceTrack, type TrackBonus } from "./race-track";
 import { TypingZone } from "./typing-zone";
 
 type ConnectionState = "connecting" | "live" | "reconnecting";
@@ -37,7 +37,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const [invites, setInvites] = useState<PublicInvite[]>([]);
   const [createdInvites, setCreatedInvites] = useState<CreatedInvite[]>([]);
   const [raceSelf, setRaceSelf] = useState<RaceSelf | null>(null);
-  const [snapshot, setSnapshot] = useState<RaceSnapshot | null>(null);
+  const [raceStore] = useState(createRaceStore);
+  const snapshot = useSyncExternalStore(raceStore.subscribe, raceStore.getViewSnapshot, raceStore.getViewSnapshot);
   const [bonuses, setBonuses] = useState<TrackBonus[]>([]);
   const [clockOffset, setClockOffset] = useState(0);
   const [raceConnection, setRaceConnection] = useState<{ socket: Socket<ServerToClientEvents, ClientToServerEvents>; revision: number } | null>(null);
@@ -73,7 +74,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           setError(null);
           setConnection("live");
           setRaceSelf(response.self ?? null);
-          setSnapshot(response.raceSnapshot ?? null);
+          raceStore.setSnapshot(response.raceSnapshot ?? null);
           raceStartsAt.current = response.room.race?.startsAt ?? 0;
           setClockOffset(response.room.serverNow - Date.now());
           setRaceConnection((previous) => ({ socket, revision: (previous?.revision ?? 0) + 1 }));
@@ -87,7 +88,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     socket.on("connect_error", () => setConnection("reconnecting"));
     socket.on("race:self", setRaceSelf);
     // L'horloge est synchronisée au room:watch, sans invalider TypingZone à 10 Hz.
-    socket.on("race:state", setSnapshot);
+    socket.on("race:state", raceStore.setSnapshot);
     socket.on("race:bonus", (grant) => setBonuses((previous) => [...previous, { id: (previous.at(-1)?.id ?? 0) + 1, grant }]));
     socket.on("race:results", (results) => setRoom((previous) => previous ? { ...previous, status: "RESULTATS", results } : previous));
     socket.on("room:removed", (reason) => { if (!leaving.current) router.replace(`/?notice=${reason}`); });
@@ -101,7 +102,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       // Une mise à jour antérieure au départ peut suivre race:self.
       if (update?.status === "EN_ATTENTE" && raceStartsAt.current > 0 && update.serverNow >= raceStartsAt.current) {
         setRaceSelf(null);
-        setSnapshot(null);
+        raceStore.setSnapshot(null);
         setBonuses([]);
       }
       if (update) refreshInvites(update);
@@ -112,7 +113,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       socketRef.current = null;
       socket.disconnect();
     };
-  }, [code, selfId, play, router]);
+  }, [code, selfId, play, router, raceStore]);
 
   function command(command: HostCommand) {
     const socket = socketRef.current;
@@ -184,7 +185,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
           socket={raceConnection.socket} connected={connection === "live"} /> : null}
         {/* Zone de frappe d'abord : le joueur garde son texte en haut, même avec 30 coureurs sur la piste. */}
-        <RaceTrack racers={racers} selfId={selfId} bonuses={bonuses} />
+        <RaceTrack store={raceStore} racers={room.status === "RESULTATS" && room.results ? racers : undefined} selfId={selfId} bonuses={bonuses} />
       </> : null}
       {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} canOpen={room.participants.some((p) => p.id === selfId && !p.isGuest)} /> : null}
       {room.status !== "EN_ATTENTE" ? hostActions : null}
