@@ -124,6 +124,18 @@ export const fr = {
     loginRequiredTitle: "Connexion requise",
     notJoinedTitle: "Salle non rejointe",
   },
+  results: {
+    podium: "Podium", table: "Classement complet", rank: "Rang", participant: "Participant",
+    rawMpm: "MPM brut", errors: "Erreurs", time: "Temps", status: "Statut", bonuses: "Bonus reçus",
+    none: "Aucun", unavailable: "—", personalBest: "Record personnel", permalink: "Ouvrir les résultats enregistrés",
+    stay: "Rester", chart: "Évolution du MPM", seconds: "Temps (secondes)", legend: "Légende des participants",
+    chartSummary: "MPM net en fonction du temps écoulé. Chaque participant a un motif de trait distinct. Les valeurs finales sont dans le classement.",
+    seriesSummary: "{name} : {mpm} MPM après {time}.",
+    chooseParticipant: "Participant du clavier", keyboard: "Touches manquées — {name}",
+    keyboardSummary: "Clavier AZERTY. Une touche plus intense indique davantage d’erreurs. Le nombre d’erreurs de chaque touche est disponible à la lecture assistée.",
+    keyErrors: " : {count} erreurs", space: "Espace",
+    outcomes: { finished: "Terminé", timeout: "Temps écoulé", abandoned: "Abandon" },
+  },
   race: {
     track: "Piste de course", you: "vous", inputLabel: "Zone de frappe",
     mpm: "MPM", netMpm: "MPM net", accuracy: "Précision",

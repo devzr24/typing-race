@@ -6,6 +6,7 @@ import {
 } from "@/lib/race/engine";
 import { activeRaces, type ActiveRace } from "@/lib/rooms/race-memory";
 import { finishRace } from "@/lib/rooms/service";
+import { persistRace } from "@/lib/race/persist";
 import type { RoomStore } from "@/lib/rooms/store";
 import type { Room } from "@/lib/rooms/types";
 import type { ServerToClientEvents } from "@/lib/rooms/events";
@@ -47,9 +48,19 @@ export function startRaceRuntime(store: RoomStore, room: Room, race: ActiveRace,
   function finish() {
     if (!current() || finishing || !isOver(state)) return;
     finishing = true;
-    void finishRace(store, room.code, publish).then((result) => {
+    void finishRace(store, room.code).then(async (result) => {
       if (!result.ok) finishing = false;
+      if (result.ok) {
+        try {
+          const saved = await persistRace(room, race);
+          if (saved) race.results?.forEach((r, index) => {
+            r.raceId = saved.id;
+            r.isPersonalBest = saved.personalBests[index];
+          });
+        } catch (error: unknown) { console.error("> race persist", error); }
+      }
       if (result.ok && activeRaces.get(room.code) === race && race.results) {
+        await publish(room.code);
         transport()?.room(room.code, "race:results", race.results);
       }
     }).catch((error: unknown) => { finishing = false; console.error("> race finish", error); });

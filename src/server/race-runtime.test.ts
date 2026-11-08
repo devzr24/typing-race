@@ -10,6 +10,9 @@ import { registerRoomHandlers } from "./room-socket";
 import type { RealtimeServer } from "./realtime";
 import * as realtime from "./realtime";
 import { identityFromCookieHeader } from "./socket-identity";
+import { persistRace } from "@/lib/race/persist";
+
+vi.mock("@/lib/race/persist", () => ({ persistRace: vi.fn() }));
 
 vi.mock("@/lib/rooms/prisma-store", async () => {
   const { MemoryRoomStore } = await import("@/lib/rooms/memory-store");
@@ -33,6 +36,7 @@ beforeEach(async () => {
   vi.useFakeTimers();
   vi.setSystemTime(10_000);
   vi.clearAllMocks();
+  vi.mocked(persistRace).mockReset().mockResolvedValue(null);
   store.rooms.clear();
   await store.createRoom(code, host);
   await joinRoom(store, code, guest);
@@ -90,6 +94,40 @@ function sockets() {
 }
 
 describe("minuteries de course", () => {
+  it("persiste une seule fois après la fin puis diffuse l'id et le record sans clé de session", async () => {
+    const race = await start("ab");
+    vi.mocked(persistRace).mockResolvedValueOnce({ id: "saved-race", personalBests: [true, false] });
+    expect(persistRace).not.toHaveBeenCalled();
+    race.runtime!.input(race.state!.racers[0].id, "a");
+    expect(persistRace).not.toHaveBeenCalled();
+    race.runtime!.input(race.state!.racers[0].id, "b");
+    race.runtime!.abandon(race.state!.racers[1].id);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(persistRace).toHaveBeenCalledOnce();
+    expect((await store.findRoom(code))!.status).toBe("RESULTATS");
+    expect(race.results![0]).toMatchObject({ raceId: "saved-race", isPersonalBest: true });
+    expect(toPublicRoom((await store.findRoom(code))!).results).toEqual(race.results);
+    const results = send.mock.calls.filter(([, event]) => event === "race:results");
+    expect(results).toHaveLength(1);
+    expect(results[0][2]).toEqual(race.results);
+    expect(JSON.stringify(results[0][2])).not.toContain('"key"');
+    race.runtime!.abandon(race.state!.racers[0].id);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(persistRace).toHaveBeenCalledOnce();
+  });
+  it("journalise l'échec de persistance et diffuse quand même les résultats", async () => {
+    const race = await start("a");
+    const failure = new Error("storage unavailable");
+    vi.mocked(persistRace).mockRejectedValueOnce(failure);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    race.runtime!.abandon(race.state!.racers[0].id);
+    race.runtime!.abandon(race.state!.racers[1].id);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(log).toHaveBeenCalledWith("> race persist", failure);
+    expect((await store.findRoom(code))!.status).toBe("RESULTATS");
+    expect(send.mock.calls.filter(([, event]) => event === "race:results")).toHaveLength(1);
+    expect(race.results!.every((r) => !r.raceId && !r.isPersonalBest)).toBe(true);
+  });
   it.each(["départ", "expulsion"])("termine sans temps maximal après le %s du second humain", async (departure) => {
     const race = await start("a");
     const [first, second] = race.state!.racers;

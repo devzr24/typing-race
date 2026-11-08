@@ -54,6 +54,7 @@ model User {
   image        String?
   accounts     Account[]
   roomEntries  RoomParticipant[]
+  raceResults  RaceResult[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 }
@@ -229,4 +230,53 @@ model RoomBan {
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, key])
+}
+
+enum RaceResultKind {
+  UTILISATEUR
+  INVITE
+  BOT
+}
+
+enum RaceOutcome {
+  TERMINE
+  TEMPS_ECOULE
+  ABANDON
+}
+
+// Instantané indépendant de la salle, qui peut être supprimée après la course.
+model Race {
+  id        String       @id @default(cuid())
+  roomCode  String
+  text      String
+  config    Json
+  startedAt DateTime
+  endedAt   DateTime
+  results   RaceResult[]
+}
+
+model RaceResult {
+  id             String         @id @default(cuid())
+  raceId         String
+  userId         String?
+  displayName    String
+  image          String?
+  kind           RaceResultKind
+  rank           Int
+  wpm            Float
+  rawWpm         Float
+  accuracy       Float
+  errors         Int
+  timeMs         Int?
+  outcome        RaceOutcome
+  wpmSeries      Json
+  missedKeys     Json
+  bonuses        Json
+  isPersonalBest Boolean
+  createdAt      DateTime        @default(now())
+
+  race Race  @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
 }
