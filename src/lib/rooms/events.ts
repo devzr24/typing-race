@@ -9,7 +9,7 @@ export type CommandResponse = { ok: true; invites?: PublicInvite[]; createdInvit
 // Événements Socket.IO échangés entre le navigateur et le serveur (typés des deux côtés).
 
 export type WatchResponse =
-  | { ok: true; room: PublicRoom; selfId: string; self?: RaceSelf }
+  | { ok: true; room: PublicRoom; selfId: string; self?: RaceSelf; raceSnapshot?: RaceSnapshot }
   | { ok: false; error: ErrorCode };
 
 export interface ServerToClientEvents {

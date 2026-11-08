@@ -50,6 +50,32 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Course : interpolation sur le compositeur, aucune boucle React par image. */
+.race-marker {
+  transition: transform 120ms linear;
+}
+.race-fog {
+  filter: blur(3px);
+}
+.typing-mobile {
+  display: none;
+}
+@media (pointer: coarse) and (max-width: 767px) {
+  .typing-mobile { display: block; }
+  .typing-desktop { display: none; }
+}
+html.fx-off .race-marker {
+  transition: none;
+}
+html.fx-off .race-fog {
+  filter: none;
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-marker { transition: none; }
+  .race-fog { filter: none; opacity: 0.55; }
+}
+
 h1,
 h2,
 h3 {

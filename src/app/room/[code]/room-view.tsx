@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { io, type Socket } from "socket.io-client";
@@ -18,12 +18,15 @@ import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/eve
 import type { CreatedInvite, PublicInvite, PublicParticipant, PublicRoom } from "@/lib/rooms/types";
 import type { HostCommand } from "@/lib/rooms/schemas";
 import { launchError } from "@/lib/rooms/state-machine";
+import type { RaceSelf, RaceSnapshot } from "@/lib/race/engine";
 import { RaceCountdown, RoomConfiguration } from "./room-configuration";
+import { RaceTrack, type TrackBonus } from "./race-track";
+import { TypingZone } from "./typing-zone";
 
 type ConnectionState = "connecting" | "live" | "reconnecting";
 
 export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; selfId: string }) {
-  const { m } = useI18n();
+  const { locale, m } = useI18n();
   const router = useRouter();
   const [room, setRoom] = useState<PublicRoom | null>(initialRoom);
   const [connection, setConnection] = useState<ConnectionState>("connecting");
@@ -32,7 +35,14 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const [pending, setPending] = useState(false);
   const [invites, setInvites] = useState<PublicInvite[]>([]);
   const [createdInvites, setCreatedInvites] = useState<CreatedInvite[]>([]);
+  const [raceSelf, setRaceSelf] = useState<RaceSelf | null>(null);
+  const [snapshot, setSnapshot] = useState<RaceSnapshot | null>(null);
+  const [bonuses, setBonuses] = useState<TrackBonus[]>([]);
+  const [clockOffset, setClockOffset] = useState(0);
+  const [raceConnection, setRaceConnection] = useState<{ socket: Socket<ServerToClientEvents, ClientToServerEvents>; revision: number } | null>(null);
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  const raceStartsAt = useRef(initialRoom.race?.startsAt ?? 0);
+  const number = useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }), [locale]);
   const code = initialRoom.code;
   const { play } = useFeedback();
   const participantCount = useRef(initialRoom.participants.length);
@@ -56,6 +66,11 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           setRoom(response.room);
           setError(null);
           setConnection("live");
+          setRaceSelf(response.self ?? null);
+          setSnapshot(response.raceSnapshot ?? null);
+          raceStartsAt.current = response.room.race?.startsAt ?? 0;
+          setClockOffset(response.room.serverNow - Date.now());
+          setRaceConnection((previous) => ({ socket, revision: (previous?.revision ?? 0) + 1 }));
           refreshInvites(response.room);
         } else {
           setError(response.error);
@@ -64,6 +79,13 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     });
     socket.on("disconnect", () => setConnection("reconnecting"));
     socket.on("connect_error", () => setConnection("reconnecting"));
+    socket.on("race:self", setRaceSelf);
+    socket.on("race:state", (state) => {
+      setSnapshot(state);
+      setClockOffset(state.serverNow - Date.now());
+    });
+    socket.on("race:bonus", (grant) => setBonuses((previous) => [...previous, { id: (previous.at(-1)?.id ?? 0) + 1, grant }]));
+    socket.on("race:results", (results) => setRoom((previous) => previous ? { ...previous, status: "RESULTATS", results } : previous));
     socket.on("room:removed", (reason) => { if (!leaving.current) router.replace(`/?notice=${reason}`); });
     socket.on("room:update", (update) => {
       // Son discret quand un joueur arrive (si le son est activé).
@@ -71,6 +93,13 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       if (count > participantCount.current) play("join");
       participantCount.current = count;
       setRoom(update);
+      if (update?.race) raceStartsAt.current = update.race.startsAt;
+      // Une mise à jour antérieure au départ peut suivre race:self.
+      if (update?.status === "EN_ATTENTE" && raceStartsAt.current > 0 && update.serverNow >= raceStartsAt.current) {
+        setRaceSelf(null);
+        setSnapshot(null);
+        setBonuses([]);
+      }
       if (update) refreshInvites(update);
       if (update && !update.participants.some((p) => p.id === selfId)) setError("noLongerInRoom");
     });
@@ -113,6 +142,11 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const isHost = room.participants.some((p) => p.id === selfId && p.isHost);
   const canConfigure = room.status === "EN_ATTENTE" || room.status === "RESULTATS";
   const startError = launchError(room);
+  const racers = room.status === "RESULTATS" && room.results
+    ? room.results.map((racer) => ({ ...racer, mpm: racer.netMpm }))
+    : snapshot?.racers ?? [];
+  const selfRacer = racers.find((racer) => racer.id === selfId);
+  const isSpectator = room.participants.some((p) => p.id === selfId && p.isSpectator);
 
   return (
     <>
@@ -178,7 +212,17 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         ))}
       </ul>
       {room.status === "DECOMPTE" && room.race ? <RaceCountdown key={room.race.startsAt} startsAt={room.race.startsAt} serverNow={room.serverNow} /> : null}
-      {room.status === "EN_COURSE" && room.race ? <section aria-label={m.room.raceText} className="whitespace-pre-wrap rounded border border-line bg-card p-4">{room.race.text}</section> : null}
+      {(room.status === "EN_COURSE" || room.status === "RESULTATS") && room.race ? <>
+        <RaceTrack racers={racers} selfId={selfId} bonuses={bonuses} />
+        {!isSpectator && selfRacer && selfRacer.status !== "racing" ? <section aria-label={m.race.provisional} className="rounded border border-line bg-card p-4">
+          <h2 className="text-lg font-medium">{m.race.provisional}</h2>
+          <p>{m.race.statuses[selfRacer.status]}</p>
+          <p>{m.race.netMpm}: {number.format(selfRacer.mpm)}</p>
+        </section> : room.status === "EN_COURSE" && !isSpectator && raceSelf && raceConnection ? <TypingZone
+          key={`${room.race.startsAt}:${raceConnection.revision}`} self={raceSelf} selfId={selfId} code={code}
+          startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
+          socket={raceConnection.socket} connected={connection === "live"} /> : null}
+      </> : null}
       {room.status === "RESULTATS" ? <h2 className="text-lg font-medium">{m.room.results}</h2> : null}
       {isHost ? <div className="flex flex-wrap gap-3">
         {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
