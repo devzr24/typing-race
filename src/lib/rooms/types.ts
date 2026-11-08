@@ -1,3 +1,5 @@
+import type { RaceResults } from "@/lib/race/engine";
+
 export type RoomStatus = "EN_ATTENTE" | "DECOMPTE" | "EN_COURSE" | "RESULTATS" | "FERMEE";
 export type RoomVisibility = "PUBLIQUE" | "SUR_CODE" | "PRIVEE";
 
@@ -91,6 +93,7 @@ export type PublicRoom = {
   config: RaceConfig;
   bots: RoomBot[];
   race: Race | null;
+  results?: RaceResults;
   serverNow: number;
 };
 

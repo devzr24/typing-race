@@ -8,6 +8,8 @@ import type { CreatedInvite, Identity, LobbyRoom, Participant, PublicInvite, Pub
 import { activeRaces, clearRace } from "./race-memory";
 import { hostCommandSchema, inviteTokenSchema } from "./schemas";
 import { isJoinable, transitionRoom } from "./state-machine";
+import { startRaceRuntime } from "@/server/race-runtime";
+import { finalResults, timeoutRemaining } from "@/lib/race/engine";
 
 /** Participants dans l'ordre d'arrivée (le plus ancien en premier). */
 export function byArrival(participants: Participant[]): Participant[] {
@@ -37,6 +39,7 @@ export function toPublicRoom(room: Room): PublicRoom {
     bots: room.bots,
     race: race && room.status !== "EN_ATTENTE" && room.status !== "FERMEE" ? { text: race.text, startsAt: race.startsAt } : null,
     serverNow: Date.now(),
+    ...(room.status === "RESULTATS" && race?.results ? { results: race.results } : {}),
     participants: byArrival(room.participants).map((p) => ({
       id: p.id,
       displayName: p.displayName,
@@ -182,7 +185,9 @@ export type LeaveResult = "left" | "room-closed" | "not-in-room";
 /** Retire un participant, transfère l'hôte si besoin et supprime la salle si elle est vide. */
 export async function leaveRoom(store: RoomStore, code: string, key: string, connectedKeys?: ReadonlySet<string>): Promise<LeaveResult> {
   return store.withRoom(code, async (room, locked) => {
-    if (!room || !room.participants.some((p) => p.key === key)) return "not-in-room";
+    const participant = room?.participants.find((p) => p.key === key);
+    if (!room || !participant) return "not-in-room";
+    activeRaces.get(code)?.runtime?.abandon(participant.id);
     const nextHost = hostAfterLeave(room, key, connectedKeys);
     if (nextHost === null) {
       const result = transitionRoom({ ...room, participants: [] }, "NO_HUMANS");
@@ -210,7 +215,13 @@ export async function finishRace(store: RoomStore, code: string, publish: Publis
     const next = transitionRoom(room, "FINISH");
     if (!next.ok) return next;
     await locked.setStatus(next.status);
-    clearTimeout(activeRaces.get(code)?.timer);
+    const race = activeRaces.get(code);
+    clearTimeout(race?.timer);
+    race?.runtime?.stop();
+    if (race?.state) {
+      timeoutRemaining(race.state, Date.now());
+      race.results = finalResults(race.state);
+    }
     return { ok: true };
   });
   if (result.ok) await publish(code);
@@ -230,7 +241,7 @@ export async function executeHostCommand(
   const parsed = hostCommandSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "roomConfigInvalid" };
   const command = parsed.data;
-  let prepared: { text: string; startsAt: number; timeLimitSec: number | null } | undefined;
+  let prepared: { text: string; startsAt: number; seed: number } | undefined;
   const result = await store.withRoom<CommandResult>(code, async (room, locked) => {
     if (!room) return { ok: false, error: "roomNotFound" };
     if (room.hostKey !== identity.key || !room.participants.some((p) => p.key === identity.key)) {
@@ -251,17 +262,19 @@ export async function executeHostCommand(
       if (!target) return { ok: false, error: "roomKickInvalid" };
       await locked.ban(target.key);
       await locked.removeParticipant(target.key);
+      activeRaces.get(code)?.runtime?.abandon(target.id);
       return { ok: true, kickedKey: target.key };
     }
     if (command.type === "start" || command.type === "reset" || command.type === "close") {
       const next = transitionRoom(room, command.type === "start" ? "START" : command.type === "reset" ? "RESET" : "CLOSE");
       if (!next.ok) return next;
       if (command.type === "start") {
-        const generated = await loadText(room.config, randomInt(0, 2 ** 32));
+        const seed = randomInt(0, 2 ** 32);
+        const generated = await loadText(room.config, seed);
         if (!generated.ok) {
           return { ok: false, error: generated.reason === "NOT_ENOUGH_WORDS" ? "raceNotEnoughWords" : "raceNoPassage" };
         }
-        prepared = { text: generated.text, startsAt: Date.now() + 3000, timeLimitSec: room.config.timeLimitSec };
+        prepared = { text: generated.text, startsAt: Date.now() + 3000, seed };
       }
       await locked.setStatus(next.status);
       if (command.type === "close") await locked.deleteRoom();
@@ -290,25 +303,19 @@ export async function executeHostCommand(
   });
   if (!result.ok) return result;
   if (prepared) {
-    const race = { text: prepared.text, startsAt: prepared.startsAt, timer: undefined as ReturnType<typeof setTimeout> | undefined };
-    const limit = prepared.timeLimitSec;
+    const race = { text: prepared.text, startsAt: prepared.startsAt, seed: prepared.seed, timer: undefined as ReturnType<typeof setTimeout> | undefined };
     activeRaces.set(code, race);
     race.timer = setTimeout(async () => {
       try {
         const changed = await store.withRoom(code, async (room, locked) => {
-          if (!room || activeRaces.get(code) !== race) return false;
+          if (!room || activeRaces.get(code) !== race) return null;
           const next = transitionRoom(room, "COUNTDOWN_END");
-          if (!next.ok) return false;
+          if (!next.ok) return null;
           await locked.setStatus(next.status);
-          return true;
+          return { ...room, status: next.status };
         });
         if (!changed) return;
-        if (limit !== null) {
-          race.timer = setTimeout(() => {
-            if (activeRaces.get(code) !== race) return;
-            void finishRace(store, code, publish).catch((error: unknown) => console.error("> finishRace", error));
-          }, Math.max(0, race.startsAt + limit * 1000 - Date.now()));
-        }
+        startRaceRuntime(store, changed, race, publish);
         await publish(code);
       } catch (error) {
         console.error("> countdown", error);
