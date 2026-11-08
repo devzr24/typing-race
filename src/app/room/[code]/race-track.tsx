@@ -1,17 +1,16 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Bot } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { useI18n } from "@/i18n/client";
 import { format } from "@/i18n/format";
 import type { BonusGrant } from "@/lib/race/bonus";
 import type { RaceSnapshot } from "@/lib/race/engine";
+import { mountTrackCanvas } from "./track-canvas";
 
 export type TrackBonus = { id: number; grant: BonusGrant };
 type Racer = RaceSnapshot["racers"][number];
-type Marker = { element: HTMLDivElement; progress: number | null };
-type RegisterMarker = (id: string, element: HTMLDivElement | null) => void;
 
 export function createRaceStore() {
   let snapshot: RaceSnapshot | null = null;
@@ -46,11 +45,9 @@ export const RaceTrack = memo(function RaceTrack({ store, racers: results, selfI
   const { m } = useI18n();
   const snapshot = useSyncExternalStore(store.subscribe, store.getViewSnapshot, store.getViewSnapshot);
   const racers = results ?? snapshot?.racers ?? [];
-  const markers = useRef(new Map<string, Marker>());
-  const registerMarker = useCallback<RegisterMarker>((id, element) => {
-    if (element) markers.current.set(id, { element, progress: null });
-    else markers.current.delete(id);
-  }, []);
+  const racerIds = JSON.stringify(racers.map((racer) => racer.id));
+  const track = useRef<HTMLDivElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
   const [sample, setSample] = useState(() => new Map((store.getSnapshot()?.racers ?? racers).map((racer) => [racer.id, racer])));
   const bonusesById = useMemo(() => {
     const byId = new Map<string, TrackBonus>();
@@ -68,47 +65,28 @@ export const RaceTrack = memo(function RaceTrack({ store, racers: results, selfI
     return () => clearInterval(timer);
   }, [running, store]);
   useEffect(() => {
-    // Entre deux race:state (10 Hz), un coureur avance d'environ un pixel : pas d'interpolation,
-    // une seule écriture groupée par état reçu, dans une seule image.
-    let frame: number | null = null;
-    const updateMarkers = () => {
-      if (frame !== null) return;
-      frame = requestAnimationFrame(() => {
-        frame = null;
-        for (const racer of results ?? store.getSnapshot()?.racers ?? []) {
-          const marker = markers.current.get(racer.id);
-          const target = Math.max(0, Math.min(1, racer.progress));
-          if (!marker || marker.progress === target) continue;
-          marker.progress = target;
-          marker.element.style.transform = `translateX(${target * 100}%)`;
-        }
-      });
-    };
-    const unsubscribe = store.subscribe(updateMarkers);
-    updateMarkers();
-    return () => {
-      unsubscribe();
-      if (frame !== null) cancelAnimationFrame(frame);
-    };
-  }, [store, results, snapshot]);
+    if (track.current && canvas.current) return mountTrackCanvas(track.current, canvas.current, store, results);
+  }, [store, results, racerIds]);
   return <section aria-label={m.race.track} className="race-track flex min-w-0 flex-col gap-3">
     <h2 className="text-lg font-medium">{m.race.track}</h2>
-    <ul className="flex flex-col gap-2">
-      {racers.map((racer) => {
-        const sampled = racer.status === "racing" ? sample.get(racer.id) ?? racer : racer;
-        return <RacerRow key={racer.id} racer={{ ...racer, mpm: sampled.mpm, progress: sampled.progress }} isSelf={racer.id === selfId}
-          registerMarker={registerMarker} bonus={bonusesById.get(racer.id)} />;
-      })}
-    </ul>
+    <div ref={track} className="relative">
+      <ul className="flex flex-col gap-2">
+        {racers.map((racer) => {
+          const sampled = racer.status === "racing" ? sample.get(racer.id) ?? racer : racer;
+          return <RacerRow key={racer.id} racer={{ ...racer, mpm: sampled.mpm, progress: sampled.progress }} isSelf={racer.id === selfId}
+            bonus={bonusesById.get(racer.id)} />;
+        })}
+      </ul>
+      <canvas ref={canvas} aria-hidden="true" className="pointer-events-none absolute inset-0 size-full text-cyan" />
+    </div>
   </section>;
 });
 
-const RacerRow = memo(function RacerRow({ racer, isSelf, bonus, registerMarker }: { racer: Racer; isSelf: boolean; bonus?: TrackBonus; registerMarker: RegisterMarker }) {
+const RacerRow = memo(function RacerRow({ racer, isSelf, bonus }: { racer: Racer; isSelf: boolean; bonus?: TrackBonus }) {
   const { locale, m } = useI18n();
   const percentFormat = useMemo(() => new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }), [locale]);
   const number = useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }), [locale]);
   const percent = Math.max(0, Math.min(1, racer.progress));
-  const markerRef = useCallback((element: HTMLDivElement | null) => registerMarker(racer.id, element), [racer.id, registerMarker]);
   return <li className={`race-row flex min-w-0 flex-col gap-2 rounded border bg-card p-3 ${isSelf ? "border-neon" : "border-line"}`}>
     <div className="race-row-details grid items-center gap-2 tabular-nums">
       <div className="race-identity flex min-w-0 items-center gap-2">
@@ -122,14 +100,9 @@ const RacerRow = memo(function RacerRow({ racer, isSelf, bonus, registerMarker }
       <span className="race-status whitespace-nowrap">{m.race.statuses[racer.status]}</span>
       {bonus ? <BonusBadge key={bonus.id} grant={bonus.grant} triggered={bonus.grant.playerId === racer.id && bonus.grant.targetId !== racer.id} /> : null}
     </div>
-    <div className="rounded bg-steel px-1.5" aria-hidden="true">
-      <div ref={markerRef} className="race-marker w-full" data-running={racer.status === "racing"}>
-        <span className="block size-3 -translate-x-1/2 rounded-full bg-cyan" />
-      </div>
-    </div>
+    <div data-racer-id={racer.id} className="h-3 rounded bg-steel px-1.5" aria-hidden="true" />
   </li>;
 }, (previous, next) => previous.isSelf === next.isSelf && previous.bonus === next.bonus
-  && previous.registerMarker === next.registerMarker
   && previous.racer.name === next.racer.name && previous.racer.image === next.racer.image
   && previous.racer.isBot === next.racer.isBot && previous.racer.progress === next.racer.progress
   && Math.round(previous.racer.mpm) === Math.round(next.racer.mpm) && previous.racer.status === next.racer.status);

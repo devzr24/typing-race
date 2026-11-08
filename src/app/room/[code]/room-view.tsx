@@ -132,6 +132,10 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     });
   }
 
+  const racers = useMemo(() => room?.status === "RESULTATS" && room.results
+    ? room.results.map((racer) => ({ ...racer, mpm: racer.netMpm }))
+    : snapshot?.racers ?? [], [room?.status, room?.results, snapshot]);
+
   if (error || !room) {
     return (
       <>
@@ -147,9 +151,6 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const isHost = room.participants.some((p) => p.id === selfId && p.isHost);
   const canConfigure = room.status === "EN_ATTENTE" || room.status === "RESULTATS";
   const startError = launchError(room);
-  const racers = room.status === "RESULTATS" && room.results
-    ? room.results.map((racer) => ({ ...racer, mpm: racer.netMpm }))
-    : snapshot?.racers ?? [];
   const selfRacer = racers.find((racer) => racer.id === selfId);
   const isSpectator = room.participants.some((p) => p.id === selfId && p.isSpectator);
 
