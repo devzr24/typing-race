@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { launchRace, prepareRace } from "./helpers/race";
 
+// Composition accélérée comme dans un navigateur ordinaire : Chromium headless la désactive par défaut.
+test.use({ launchOptions: { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] } });
+
 test("la piste de 30 coureurs reste à au moins 50 images/s avec un processeur ×4", async ({ page, context }, testInfo) => {
   test.skip(!!process.env.CI, "Mesure locale sur un build de production et une base de QA.");
-  // Seuil non atteint : 35–41 img/s piste à l'écran en Chromium headless sans GPU, 41–48 avec le GPU (contre 8 avant
-  // la sortie de la piste du rendu React) ; 51–57 marqueurs masqués. Voir PERF-03 (docs/EXIGENCES.md).
-  test.fixme(true, "PERF-03 partiel : 50 img/s non atteints de façon stable avec la piste à l'écran sous CPU ×4.");
+  // Piste dessinée dans un seul canvas : 52–55 img/s avec le GPU (49–50 sans), contre 41–48 (35–41) avec les
+  // marqueurs DOM. Voir PERF-03 (docs/EXIGENCES.md) et l'ADR 0020.
   test.setTimeout(120000);
   const octet = () => Math.floor(Math.random() * 254) + 1;
   await page.setExtraHTTPHeaders({ "x-forwarded-for": `10.${octet()}.${octet()}.${octet()}` });
@@ -36,7 +38,6 @@ test("la piste de 30 coureurs reste à au moins 50 images/s avec un processeur �
       requestAnimationFrame(frame);
     }));
     // Piste seule (29 bots en mouvement, tous les effets actifs, souris mobile), comme pour un spectateur.
-    // Pendant la frappe, la mesure tombe à 30–38 img/s dans ce même cadre : voir PERF-03 dans docs/EXIGENCES.md.
     const metrics = await Promise.all([
       measurement,
       page.mouse.move(600, 350, { steps: 60 }),

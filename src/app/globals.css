@@ -86,7 +86,7 @@ body {
   to { opacity: 0; }
 }
 
-/* Course : positions interpolées par une rAF commune, aucune boucle React par image. */
+/* Course : piste dessinée dans un canvas une fois par état reçu, sans interpolation. */
 .race-track,
 .race-row,
 .race-text {
@@ -109,9 +109,6 @@ body {
   .race-status { grid-column: auto; }
   .race-identity { grid-column: auto; }
 }
-.race-marker[data-running="true"] {
-  will-change: transform;
-}
 .race-fog {
   filter: blur(3px);
 }
@@ -122,15 +119,11 @@ body {
   .typing-mobile { display: block; }
   .typing-desktop { display: none; }
 }
-html.fx-off .race-marker {
-  will-change: auto;
-}
 html.fx-off .race-fog {
   filter: none;
   opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
-  .race-marker[data-running] { will-change: auto; }
   .race-fog { filter: none; opacity: 0.55; }
 }
 
