@@ -10,8 +10,8 @@ Mise à jour : 2026-11-08.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 79 |
-| Partiel | 10 |
+| Complet | 80 |
+| Partiel | 9 |
 | Non fait | 1 |
 | **Total** | **90** |
 
@@ -22,7 +22,7 @@ Mise à jour : 2026-11-08.
 | TECH-01 | complet | `package.json`, `src/app/` | toute la suite | Next.js 16 (App Router) et React 19. |
 | TECH-02 | complet | `tsconfig.json`, `eslint.config.ts` | CI : `npm run lint`, `npm run typecheck` | Aucun fichier `.js`/`.jsx` suivi par Git ; `strict: true`. `no-explicit-any` et `ban-ts-comment` sont en erreur par héritage de `eslint-config-next/typescript` (recommandé de typescript-eslint) ; aucun `any`, `@ts-ignore` ni `@ts-expect-error` dans le code écrit à la main. Le client Prisma généré (`src/generated/`, ignoré par Git et par ESLint) en contient. |
 | TECH-03 | complet | `src/app/globals.css` | — | Tailwind CSS 4. |
-| TECH-04 | partiel | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts`, `prisma/corpus/` | `src/server/migrate.test.ts`, `src/server/corpus.test.ts`, `src/server/seed.test.ts` | PostgreSQL + Prisma 7, migrations versionnées et appliquées au démarrage (ADR 0008). Seed idempotent (`npm run db:seed`, lancé au démarrage sur Railway, ADR 0013) : 20 extraits du domaine public et environ 1000 mots par langue, comptes de démonstration `demo` et `demo2`. **Manque** : historique de démonstration (attend les tables de résultats, RES-05). |
+| TECH-04 | complet | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts`, `prisma/corpus/` | `src/server/migrate.test.ts`, `src/server/corpus.test.ts`, `src/server/seed.test.ts` | PostgreSQL + Prisma 7, migrations versionnées et appliquées au démarrage (ADR 0008). Seed idempotent (`npm run db:seed`, lancé au démarrage sur Railway, ADR 0013) : 20 extraits du domaine public et environ 1000 mots par langue, comptes de démonstration `demo` et `demo2`. Historique de démonstration : 12 courses terminées de `demo` et `demo2` contre des bots sur 30 jours (valeurs à graine, records cohérents), créé une seule fois et jamais si un compte de démonstration a déjà des résultats. |
 | TECH-05 | partiel | `railway.json`, `server.ts` | `/api/health` | Déployé en HTTPS sur Railway : https://typing-race-production-4a76.up.railway.app. **Écart** : Railway est une plateforme hébergée (PaaS), pas un VPS. Choix à faire valider par l'enseignant ou à remplacer par un VPS (ADR 0001). |
 | TECH-06 | complet | `server.ts`, `src/server/room-socket.ts`, `src/server/realtime.ts`, `src/server/race-runtime.ts` | `e2e/room.spec.ts`, `src/server/race-runtime.test.ts` | Socket.IO sur le serveur Node (ADR 0002), participants et progression de course diffusés ; événements de course typés et entrées validées par Zod. |
 | TECH-07 | complet | `src/lib/auth/schemas.ts`, `src/lib/rooms/schemas.ts`, `src/i18n/schemas.ts` | `src/lib/auth/schemas.test.ts`, `src/lib/rooms/schemas.test.ts`, `src/i18n/schemas.test.ts` | Zod 4 sur toutes les entrées actuelles : actions serveur (authentification, salles, langue et thème), `authorize` des fournisseurs `credentials` et `guest`, message Socket.IO `room:watch`, code de salle dans l'URL (`/room/[code]`). Les schémas renvoient des codes `ErrorCode`. Seule route API maison : `/api/health`, sans entrée. Chaque nouvelle entrée devra avoir son schéma. |
