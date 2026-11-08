@@ -203,9 +203,9 @@ export function TypedTagline({ text }: { text: string }) {
     const root = document.documentElement;
     const field = visible.current;
     if (!field) return;
+    field.textContent = text;
     if (!effects || reducedMotion) {
       root.classList.remove("type-tagline");
-      field.textContent = text;
       return;
     }
     if (!root.classList.contains("type-tagline")) return;
@@ -223,7 +223,6 @@ export function TypedTagline({ text }: { text: string }) {
     return () => {
       clearTimeout(delay);
       clearInterval(timer);
-      field.textContent = text;
     };
   }, [text, effects, reducedMotion]);
 

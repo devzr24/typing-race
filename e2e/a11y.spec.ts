@@ -1,4 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
+
+// Le logo est exclu : WCAG 1.4.3 exempte les logotypes, et son grésillement néon fait varier sa couleur
+// d'une image à l'autre (mesure instable). Tout le reste de la page est audité.
+const axe = (page: import("@playwright/test").Page) =>
+  new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).exclude(".logo-neon");
 import { expect, test, type Page } from "@playwright/test";
 import { startShortRace } from "./helpers/race";
 
@@ -10,7 +15,7 @@ async function audit(page: Page) {
       animation.effect?.getTiming().iterations !== Infinity,
     ).map((animation) => animation.finished.catch(() => {})));
   });
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  const results = await axe(page).analyze();
   expect(results.violations).toEqual([]);
   await expect(page.getByRole("main")).toHaveAttribute("id", "contenu");
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
@@ -52,7 +57,7 @@ for (const theme of ["light", "dark"]) {
       await expect(dialog.getByRole("button", { name: "Abandonner", exact: true })).toBeFocused();
       await page.keyboard.press("Shift+Tab");
       await expect(cancel).toBeFocused();
-      const violations = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      const violations = await axe(page).analyze();
       expect(violations.violations).toEqual([]);
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
