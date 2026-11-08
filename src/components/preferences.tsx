@@ -32,7 +32,7 @@ export function LanguageSelect() {
         }}
       >
         {LOCALES.map((l) => (
-          <option key={l} value={l} lang={l} aria-label={LANGUAGE_FULL_NAMES[l]}>
+          <option key={l} value={l} lang={l} aria-label={`${LANGUAGE_NAMES[l]} — ${LANGUAGE_FULL_NAMES[l]}`}>
             {LANGUAGE_NAMES[l]}
           </option>
         ))}

@@ -9,7 +9,7 @@ import type { ErrorCode } from "@/i18n/messages";
 import type { RaceSelf } from "@/lib/race/engine";
 import { createInputBatcher } from "@/lib/race/input-batcher";
 import { accuracy, netMpm } from "@/lib/race/metrics";
-import { characterState, committedInput, initialTypingState, predictKeys, reduceTyping, type Prediction } from "@/lib/race/typing-state";
+import { committedInput, initialTypingState, predictKeys, reduceTyping, textSegments, type Prediction, type TextSegment } from "@/lib/race/typing-state";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/events";
 import type { RaceConfig } from "@/lib/rooms/types";
 
@@ -160,17 +160,20 @@ const RaceText = memo(function RaceText({ prediction, clockOffset }: { predictio
     return () => clearTimeout(timer);
   }, [prediction.fogUntil, clockOffset]);
   const fogged = prediction.fogUntil > expiredFog;
-  const characters = useMemo(() => {
-    // Le mot courant reste lisible ; le brouillard ne touche que les mots suivants.
-    const wordEnd = prediction.text.indexOf(" ", prediction.position);
-    const fogStart = wordEnd < 0 ? prediction.text.length : wordEnd + 1;
-    const classes = { correct: "text-cyan", error: "bg-alert/15 text-alert underline", current: "bg-steel text-ink", remaining: "text-mist" };
-    return prediction.text.split("").map((character, index) => <span key={index}
-      className={`${classes[characterState(index, prediction)]}${fogged && index >= fogStart ? " race-fog" : ""}`}>{character}</span>);
-  }, [prediction, fogged]);
-  return <section aria-label={m.room.raceText} className="whitespace-pre-wrap break-words rounded border border-line bg-card p-4 font-mono text-lg">
-    {characters}
+  return <section aria-label={m.room.raceText} className="race-text whitespace-pre-wrap break-words rounded border border-line bg-card p-4 font-mono text-lg">
+    {textSegments(prediction, fogged).map((segment) => <RaceTextSegment key={segment.start} {...segment} />)}
   </section>;
+}, (previous, next) => previous.clockOffset === next.clockOffset
+  && previous.prediction.text === next.prediction.text
+  && previous.prediction.position === next.prediction.position
+  && previous.prediction.currentError === next.prediction.currentError
+  && previous.prediction.fogUntil === next.prediction.fogUntil
+  && previous.prediction.wrongPositions.length === next.prediction.wrongPositions.length
+  && previous.prediction.wrongPositions.every((position, index) => position === next.prediction.wrongPositions[index]));
+
+const RaceTextSegment = memo(function RaceTextSegment({ text, state, fogged }: TextSegment) {
+  const classes = { correct: "text-cyan", error: "bg-alert/15 text-alert underline", current: "bg-steel text-ink", remaining: "text-mist" };
+  return <span className={`${classes[state]}${fogged ? " race-fog" : ""}`}>{text}</span>;
 });
 
 function RaceMetrics({ correct, total, startsAt, clockOffset }: { correct: number; total: number; startsAt: number; clockOffset: number }) {

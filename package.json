@@ -37,6 +37,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.1",
@@ -46,6 +47,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "jiti": "^2.7.0",
+    "lighthouse": "^13.6.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

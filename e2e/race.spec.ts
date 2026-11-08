@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { startShortRace } from "./helpers/race";
 
 // Chaque test simule un client distinct : la limite de 5 inscriptions par IP et par heure (SEC-03)
 // s'appliquerait sinon à toute la suite, qui tourne depuis la même machine.
@@ -7,31 +8,6 @@ test.beforeEach(async ({ page }) => {
   await page.setExtraHTTPHeaders({ "x-forwarded-for": `10.${octet()}.${octet()}.${octet()}` });
 });
 
-async function startShortRace(page: Page) {
-  await page.goto("/register");
-  await page.getByLabel("Nom d'utilisateur", { exact: true }).fill(`course-${crypto.randomUUID().slice(0, 18)}`);
-  await page.getByLabel("Mot de passe", { exact: true }).fill("Password-e2e-123");
-  await page.getByLabel("Confirmer le mot de passe").fill("Password-e2e-123");
-  await page.getByRole("button", { name: "Créer mon compte" }).click();
-  await expect(page).toHaveURL("/");
-  await page.getByRole("button", { name: "Créer une salle" }).click();
-  await expect(page.getByText("En direct", { exact: true })).toBeVisible();
-  await page.getByLabel("Niveau du bot").selectOption("IMPOSSIBLE");
-  await page.getByRole("button", { name: "Ajouter un bot" }).click();
-  await expect(page.getByText("bot", { exact: true })).toBeVisible();
-  await page.getByLabel("Type de texte").selectOption("ALEATOIRE");
-  await page.getByLabel("Complexité").selectOption("FACILE");
-  await page.getByLabel("Nombre de mots").fill("10");
-  for (const name of ["Ponctuation", "Chiffres", "Majuscules", "Accents", "Bonus activés"]) {
-    await page.getByLabel(name, { exact: true }).uncheck();
-  }
-  await page.getByRole("button", { name: "Enregistrer la configuration" }).click();
-  await expect(page.getByLabel("Nombre de mots")).toHaveValue("10");
-  await expect(page.getByRole("button", { name: "Lancer la course" })).toBeEnabled();
-  await page.getByRole("button", { name: "Lancer la course" }).click();
-  await expect(page.getByRole("status", { name: "Décompte" })).toBeVisible();
-  await expect(page.getByLabel("Zone de frappe", { exact: true })).toBeEnabled({ timeout: 10000 });
-}
 
 test("course complète avec un bot et arrivée du joueur", async ({ page }) => {
   test.setTimeout(60000);

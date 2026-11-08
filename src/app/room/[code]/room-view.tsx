@@ -51,6 +51,11 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   const leaving = useRef(false);
 
   useEffect(() => {
+    document.documentElement.classList.toggle("race-active", room?.status === "EN_COURSE");
+    return () => document.documentElement.classList.remove("race-active");
+  }, [room?.status]);
+
+  useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
     socketRef.current = socket;
     function refreshInvites(update: PublicRoom) {
@@ -81,10 +86,8 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
     socket.on("disconnect", () => setConnection("reconnecting"));
     socket.on("connect_error", () => setConnection("reconnecting"));
     socket.on("race:self", setRaceSelf);
-    socket.on("race:state", (state) => {
-      setSnapshot(state);
-      setClockOffset(state.serverNow - Date.now());
-    });
+    // L'horloge est synchronisée au room:watch, sans invalider TypingZone à 10 Hz.
+    socket.on("race:state", setSnapshot);
     socket.on("race:bonus", (grant) => setBonuses((previous) => [...previous, { id: (previous.at(-1)?.id ?? 0) + 1, grant }]));
     socket.on("race:results", (results) => setRoom((previous) => previous ? { ...previous, status: "RESULTATS", results } : previous));
     socket.on("room:removed", (reason) => { if (!leaving.current) router.replace(`/?notice=${reason}`); });
@@ -163,7 +166,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
       <section className="flex flex-col gap-3" aria-labelledby="participants-title">
         <div className="flex items-baseline justify-between">
           <h2 id="participants-title" className="text-lg font-medium">
-            {format(m.room.participants, { count: room.participants.length })}
+            {format(m.room.participants, { count: number.format(room.participants.length) })}
           </h2>
           <span className="text-sm text-mist" aria-live="polite">
             {m.room[connection]}
@@ -194,7 +197,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           {invites.map((invite, index) => {
             const created = createdInvites.find((i) => i.id === invite.id);
             return <li key={invite.id} className="flex flex-wrap items-center gap-2 rounded border border-line p-2">
-              <span>{format(m.room.inviteNumber, { number: index + 1 })}</span>
+              <span>{format(m.room.inviteNumber, { number: number.format(index + 1) })}</span>
               <span>{invite.revoked ? m.room.inviteRevoked : invite.used ? format(m.room.inviteUsed, { name: invite.usedByName ?? "" }) : m.room.inviteUnused}</span>
               {created && !invite.revoked ? <CopyButton text={`${window.location.origin}/invite/${created.token}`} /> : null}
             </li>;
@@ -244,9 +247,6 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
   );
 }
 
-const NEON_GLOW = "0 0 18px color-mix(in srgb, var(--color-neon) 60%, transparent)";
-const NO_GLOW = "0 0 0px color-mix(in srgb, var(--color-neon) 0%, transparent)";
-
 function ParticipantRow({ participant: p, isSelf, kick, disabled }: { participant: PublicParticipant; isSelf: boolean; kick?: () => void; disabled: boolean }) {
   const { m } = useI18n();
   const animated = useEffectsEnabled();
@@ -254,11 +254,11 @@ function ParticipantRow({ participant: p, isSelf, kick, disabled }: { participan
   return (
     <motion.li
       layout={animated}
-      initial={animated ? { opacity: 0, x: -24, boxShadow: NEON_GLOW } : false}
-      animate={{ opacity: 1, x: 0, boxShadow: NO_GLOW }}
+      initial={animated ? { opacity: 0, x: -24 } : false}
+      animate={{ opacity: 1, x: 0 }}
       exit={animated ? { opacity: 0, transition: { duration: 0.3 } } : { opacity: 0, transition: { duration: 0 } }}
-      transition={{ duration: 0.45, ease: "easeOut", boxShadow: { duration: 1.2 } }}
-      className={`flex items-center gap-3 rounded-lg border-2 bg-card px-3 py-2 ${p.isHost ? "border-neon" : "border-line"}`}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className={`participant-card flex items-center gap-3 rounded-lg border-2 bg-card px-3 py-2 ${p.isHost ? "border-neon" : "border-line"}`}
     >
       <Avatar name={p.displayName} image={p.image} />
       <span className="font-medium break-all">{p.displayName}</span>

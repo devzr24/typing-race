@@ -1,7 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { characterState, committedInput, initialTypingState, predictKeys, reduceTyping } from "./typing-state";
+import { characterState, committedInput, initialTypingState, predictKeys, reduceTyping, textSegments } from "./typing-state";
 
 const self = { text: "abc def", position: 0, errors: 0, fogUntil: 0 };
+
+describe("découpage du texte en segments", () => {
+  it("regroupe le préfixe validé et sépare le curseur du brouillard", () => {
+    const prediction = predictKeys(initialTypingState({ ...self, text: "abc def ghi" }).base, "abc d", "CORRECTION");
+    expect(textSegments(prediction, true)).toEqual([
+      { start: 0, text: "abc d", state: "correct", fogged: false },
+      { start: 5, text: "e", state: "current", fogged: false },
+      { start: 6, text: "f ", state: "remaining", fogged: false },
+      { start: 8, text: "ghi", state: "remaining", fogged: true },
+    ]);
+    expect(textSegments(prediction, false).at(-1)).toEqual({ start: 6, text: "f ghi", state: "remaining", fogged: false });
+  });
+
+  it.each(["CORRECTION", "LIBRE"] as const)("préserve chaque état en mode %s, aux espaces et en fin de texte", (mode) => {
+    let prediction = initialTypingState({ ...self, text: "éa  bc\ndef" }).base;
+    for (const keys of ["", "x", "é", "x", "a", "  ", "bx", "c\ndef"]) {
+      prediction = predictKeys(prediction, keys, mode);
+      for (const fogged of [false, true]) {
+        const segments = textSegments(prediction, fogged);
+        expect(segments.map((segment) => segment.text).join("")).toBe(prediction.text);
+        const wordEnd = prediction.text.indexOf(" ", prediction.position);
+        const fogStart = wordEnd < 0 ? prediction.text.length : wordEnd + 1;
+        const characters = segments.flatMap((segment) => segment.text.split("").map((text, offset) => ({
+          text, state: segment.state, fogged: segment.fogged, index: segment.start + offset,
+        })));
+        expect(characters).toEqual(prediction.text.split("").map((text, index) => ({
+          text, state: characterState(index, prediction), fogged: fogged && index >= fogStart, index,
+        })));
+      }
+    }
+  });
+
+  it("borne le nombre de segments pour 200 mots, même après une frappe", () => {
+    const text = Array(200).fill("bonjour").join(" ");
+    const prediction = predictKeys(initialTypingState({ ...self, text }).base, text.slice(0, 700), "CORRECTION");
+    expect(textSegments(prediction, false)).toHaveLength(3);
+    expect(textSegments(predictKeys(prediction, text[700], "CORRECTION"), false)).toHaveLength(3);
+    expect(textSegments(prediction, true)).toHaveLength(4);
+    expect(textSegments(initialTypingState({ ...self, text: "" }).base, true)).toEqual([]);
+  });
+});
 
 describe("prédiction de frappe", () => {
   it("reste sur l'erreur en correction, puis avance sans retour arrière", () => {

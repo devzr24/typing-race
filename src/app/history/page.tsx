@@ -30,9 +30,9 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
   const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
   const outcomes = { TERMINE: "finished", TEMPS_ECOULE: "timeout", ABANDON: "abandoned" } as const;
-  return <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
+  return <main id="contenu" tabIndex={-1} className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
     <h1 className="text-2xl font-semibold">{m.history.title}</h1>
-    {!results.length ? <p className="text-mist">{m.history.empty}</p> : <div className="overflow-x-auto">
+    {!results.length ? <p className="text-mist">{m.history.empty}</p> : <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={m.history.title}>
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{m.history.title}</caption>
         <thead><tr>{[m.history.date, m.race.netMpm, m.race.accuracy, m.results.rank, m.results.status].map((label) => <th key={label} scope="col" className="border-b border-line p-3">{label}</th>)}</tr></thead>

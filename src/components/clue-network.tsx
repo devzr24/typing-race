@@ -11,17 +11,6 @@ const CURSOR_RADIUS = 170; // px : les lignes proches de la souris s'allument
 
 type Point = { x: number; y: number; vx: number; vy: number };
 
-/** Couleur calculée d'une variable CSS (light-dark() résolu selon le thème courant). */
-function resolveColor(variable: string): string {
-  const probe = document.createElement("span");
-  probe.style.color = `var(${variable})`;
-  probe.style.display = "none";
-  document.body.append(probe);
-  const color = getComputedStyle(probe).color;
-  probe.remove();
-  return color;
-}
-
 /**
  * Réseau d'indices : points cyan reliés par des lignes steel, en arrière-plan.
  * Les lignes s'allument (cyan) à l'approche de la souris.
@@ -46,7 +35,16 @@ export function ClueNetwork() {
     const mouse = { x: -9999, y: -9999 };
 
     const readColors = () => {
-      colors = { point: resolveColor("--color-cyan"), line: resolveColor("--color-steel") };
+      // Toutes les écritures précèdent les lectures de style : un seul recalcul.
+      const probes = ["--color-cyan", "--color-steel"].map((variable) => {
+        const probe = document.createElement("span");
+        probe.style.color = `var(${variable})`;
+        probe.style.display = "none";
+        return probe;
+      });
+      document.body.append(...probes);
+      colors = { point: getComputedStyle(probes[0]).color, line: getComputedStyle(probes[1]).color };
+      probes.forEach((probe) => probe.remove());
       makeSprite();
     };
 
@@ -141,6 +139,7 @@ export function ClueNetwork() {
 
     let frame = 0;
     let last = 0;
+    let paused = document.documentElement.classList.contains("race-active");
     const loop = (time: number) => {
       frame = requestAnimationFrame(loop);
       if (time - last < FRAME_MS) return;
@@ -150,14 +149,32 @@ export function ClueNetwork() {
 
     readColors();
     resize();
-    frame = requestAnimationFrame(loop);
+    draw();
+    if (!paused) frame = requestAnimationFrame(loop);
 
     // Changement de thème (classe sur <html> ou thème du système) : nouvelles couleurs.
-    const observer = new MutationObserver(readColors);
+    const themeClass = () => ["light", "dark"].filter((theme) => document.documentElement.classList.contains(theme)).join(" ");
+    let theme = themeClass();
+    const observer = new MutationObserver(() => {
+      // Conserver le décor, mais libérer le rendu pendant la course.
+      const nextPaused = document.documentElement.classList.contains("race-active");
+      if (nextPaused !== paused) {
+        paused = nextPaused;
+        if (paused) cancelAnimationFrame(frame);
+        else frame = requestAnimationFrame(loop);
+      }
+      const next = themeClass();
+      if (next === theme) return;
+      theme = next;
+      readColors();
+      if (paused) draw();
+    });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     const scheme = matchMedia("(prefers-color-scheme: dark)");
-    scheme.addEventListener("change", readColors);
-    window.addEventListener("resize", resize);
+    const onScheme = () => { readColors(); if (paused) draw(); };
+    const onResize = () => { resize(); draw(); };
+    scheme.addEventListener("change", onScheme);
+    window.addEventListener("resize", onResize);
     const onMove = (event: PointerEvent) => {
       mouse.x = event.clientX;
       mouse.y = event.clientY;
@@ -171,8 +188,8 @@ export function ClueNetwork() {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      scheme.removeEventListener("change", readColors);
-      window.removeEventListener("resize", resize);
+      scheme.removeEventListener("change", onScheme);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
       ctx.clearRect(0, 0, width, height);

@@ -12,14 +12,14 @@
   --font-sans: var(--font-nunito), system-ui, sans-serif; /* texte */
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace; /* code de salle, texte tapé */
 
-  --color-neon: light-dark(#d81b60, #fc2574); /* signature : boutons principaux */
-  --color-cyan: light-dark(#0891a6, #0ee8f7); /* indice : bonus, progression, curseur */
+  --color-neon: light-dark(#d51a5e, #fc2574); /* signature : boutons principaux */
+  --color-cyan: light-dark(#07798b, #0ee8f7); /* indice : bonus, progression, curseur */
   --color-alert: light-dark(#c8102e, #fb0242); /* erreur */
   --color-ink: light-dark(#0e1223, #e6eef7); /* texte */
   --color-night: light-dark(#eef3f8, #0e1223); /* fond de page */
   --color-card: light-dark(#ffffff, #113256); /* cartes */
   --color-steel: light-dark(#c9dbea, #1b5482); /* lettre courante, avatars, route */
-  --color-mist: light-dark(#7a6f80, #9a8fa3); /* texte secondaire */
+  --color-mist: light-dark(#766b7c, #9f94a8); /* texte secondaire, contraste AA sur night et card */
   /* Bordures : mist en thème pâle (contraste ≥ 3:1 sur le fond), steel en thème foncé. */
   --color-line: light-dark(#7a6f80, #1b5482);
 }
@@ -50,9 +50,70 @@ body {
   font-family: var(--font-sans);
 }
 
+:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 60;
+  padding: 0.5rem 1rem;
+  background: var(--color-night);
+  color: var(--color-ink);
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Lueur des cartes : ombre statique, seul le fondu est animé. */
+.participant-card {
+  position: relative;
+}
+.participant-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-neon) 60%, transparent);
+  animation: participant-glow 1.2s ease-out both;
+}
+@keyframes participant-glow {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* Course : interpolation sur le compositeur, aucune boucle React par image. */
+.race-track,
+.race-row,
+.race-text {
+  contain: layout paint;
+}
+.race-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 142px;
+}
+.race-row-details {
+  grid-template-columns: 5ch minmax(10ch, 1fr);
+}
+.race-status { grid-column: 1 / -1; min-width: 14ch; }
+.race-identity {
+  grid-column: 1 / -1;
+}
+@media (min-width: 640px) {
+  .race-row { contain-intrinsic-size: auto 82px; }
+  .race-row-details { grid-template-columns: minmax(0, 1fr) 5ch 10ch 14ch; }
+  .race-status { grid-column: auto; }
+  .race-identity { grid-column: auto; }
+}
 .race-marker {
   transition: transform 120ms linear;
+}
+.race-marker[data-running="true"] {
+  will-change: transform;
 }
 .race-fog {
   filter: blur(3px);
@@ -66,13 +127,14 @@ body {
 }
 html.fx-off .race-marker {
   transition: none;
+  will-change: auto;
 }
 html.fx-off .race-fog {
   filter: none;
   opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
-  .race-marker { transition: none; }
+  .race-marker[data-running] { transition: none; will-change: auto; }
   .race-fog { filter: none; opacity: 0.55; }
 }
 
@@ -142,7 +204,8 @@ html.type-tagline .tagline-visible {
 /* Placée APRÈS le contenu (jamais sous le texte) ; en bas de l'écran quand la page est courte. */
 .road {
   position: relative;
-  height: 28vh;
+  flex-shrink: 0;
+  height: 28svh;
   min-height: 120px;
   overflow: hidden;
   perspective: 320px;
@@ -181,6 +244,10 @@ html.type-tagline .tagline-visible {
 @keyframes road-move {
   from { transform: translateY(0); }
   to { transform: translateY(64px); }
+}
+/* Pendant une course, la route se fige (comme le réseau d'indices) : la piste et la frappe passent d'abord (PERF-03). */
+html.race-active .road-lines {
+  animation-play-state: paused;
 }
 /* Plus légère en thème pâle. */
 :root.light .road {
@@ -281,22 +348,24 @@ html.type-tagline .tagline-visible {
 .logo-neon:hover::before {
   opacity: 0.85;
   color: var(--color-cyan);
+  clip-path: inset(10% 0 60% 0);
   animation: glitch-a 0.35s steps(2, end) infinite;
 }
 .logo-neon:hover::after {
   opacity: 0.85;
   color: var(--color-neon);
+  clip-path: inset(65% 0 5% 0);
   animation: glitch-b 0.3s steps(2, end) infinite;
 }
 @keyframes glitch-a {
-  0% { clip-path: inset(10% 0 60% 0); transform: translate(-2px, 1px); }
-  50% { clip-path: inset(55% 0 15% 0); transform: translate(2px, -1px); }
-  100% { clip-path: inset(30% 0 40% 0); transform: translate(-1px, 0); }
+  0% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  100% { transform: translate(-1px, 0); }
 }
 @keyframes glitch-b {
-  0% { clip-path: inset(65% 0 5% 0); transform: translate(2px, 0); }
-  50% { clip-path: inset(5% 0 70% 0); transform: translate(-2px, 1px); }
-  100% { clip-path: inset(40% 0 35% 0); transform: translate(1px, -1px); }
+  0% { transform: translate(2px, 0); }
+  50% { transform: translate(-2px, 1px); }
+  100% { transform: translate(1px, -1px); }
 }
 
 /* ─── Boutons : bordure néon animée (neon → cyan), effet magnétique, enfoncement ─────────── */
@@ -419,6 +488,9 @@ html.fx-off .logo-neon::before,
 html.fx-off .logo-neon::after {
   display: none;
 }
+html.fx-off .participant-card::before {
+  display: none;
+}
 html.fx-off .glow-neon,
 html.fx-off .icon-frame:hover,
 html.fx-off .icon-frame:focus-within {
@@ -444,6 +516,9 @@ html.fx-off .fx-magnetic:active {
   .fx-ring::after,
   .logo-neon::before,
   .logo-neon::after {
+    display: none;
+  }
+  .participant-card::before {
     display: none;
   }
   .glow-neon,

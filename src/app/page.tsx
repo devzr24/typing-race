@@ -9,7 +9,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const session = await auth();
   const { notice } = await searchParams;
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-col gap-8 px-4 py-10">
+    <main id="contenu" tabIndex={-1} className="mx-auto flex w-full max-w-sm flex-col gap-8 px-4 py-10">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{m.app.name}</h1>
         <TypedTagline text={m.app.tagline} />

@@ -6,8 +6,11 @@ export const fr = {
     // Nom du site (direction artistique).
     name: "Keyclue",
     tagline: "Courses de dactylographie multijoueurs en temps réel.",
+    skipToContent: "Aller au contenu",
+    footer: "Keyclue — Courses de dactylographie multijoueurs",
   },
   header: {
+    navigation: "Navigation principale",
     login: "Connexion",
     logout: "Déconnexion",
     guest: "(invité)",
