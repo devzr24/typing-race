@@ -3,9 +3,9 @@ import { launchRace, prepareRace } from "./helpers/race";
 
 test("la piste de 30 coureurs reste à au moins 50 images/s avec un processeur ×4", async ({ page, context }, testInfo) => {
   test.skip(!!process.env.CI, "Mesure locale sur un build de production et une base de QA.");
-  // Seuil non atteint en Chromium headless (rendu logiciel, sans GPU) : environ 8 img/s piste à l'écran,
-  // 31 sans les transitions des marqueurs, 42 sans effets, 55–58 en haut de page. Voir PERF-03 (docs/EXIGENCES.md).
-  test.fixme(true, "PERF-03 partiel : 50 img/s non atteints avec la piste à l'écran sous CPU ×4 sans GPU.");
+  // Seuil non atteint : 35–41 img/s piste à l'écran en Chromium headless sans GPU, 41–48 avec le GPU (contre 8 avant
+  // la sortie de la piste du rendu React) ; 51–57 marqueurs masqués. Voir PERF-03 (docs/EXIGENCES.md).
+  test.fixme(true, "PERF-03 partiel : 50 img/s non atteints de façon stable avec la piste à l'écran sous CPU ×4.");
   test.setTimeout(120000);
   const octet = () => Math.floor(Math.random() * 254) + 1;
   await page.setExtraHTTPHeaders({ "x-forwarded-for": `10.${octet()}.${octet()}.${octet()}` });

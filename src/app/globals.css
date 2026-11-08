@@ -86,7 +86,7 @@ body {
   to { opacity: 0; }
 }
 
-/* Course : interpolation sur le compositeur, aucune boucle React par image. */
+/* Course : positions interpolées par une rAF commune, aucune boucle React par image. */
 .race-track,
 .race-row,
 .race-text {
@@ -109,9 +109,6 @@ body {
   .race-status { grid-column: auto; }
   .race-identity { grid-column: auto; }
 }
-.race-marker {
-  transition: transform 120ms linear;
-}
 .race-marker[data-running="true"] {
   will-change: transform;
 }
@@ -126,7 +123,6 @@ body {
   .typing-desktop { display: none; }
 }
 html.fx-off .race-marker {
-  transition: none;
   will-change: auto;
 }
 html.fx-off .race-fog {
@@ -134,7 +130,7 @@ html.fx-off .race-fog {
   opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
-  .race-marker[data-running] { transition: none; will-change: auto; }
+  .race-marker[data-running] { will-change: auto; }
   .race-fog { filter: none; opacity: 0.55; }
 }
 
