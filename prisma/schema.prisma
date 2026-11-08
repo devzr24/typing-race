@@ -48,15 +48,26 @@ model User {
   username     String            @unique
   /// Haché avec scrypt ; null pour les comptes GitHub/Discord.
   passwordHash String?
-  /// Nom d'affichage fourni par GitHub/Discord.
+  /// Nom d'affichage modifiable (initialement fourni par GitHub/Discord).
   name         String?
-  /// Photo de profil fournie par GitHub/Discord.
+  /// Photo OAuth ou URL versionnée vers UserAvatar.
   image        String?
   accounts     Account[]
   roomEntries  RoomParticipant[]
   raceResults  RaceResult[]
+  avatar       UserAvatar?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+}
+
+// Photo téléversée : réencodée côté serveur, jamais conservée sur disque.
+model UserAvatar {
+  userId    String   @id
+  bytes     Bytes
+  mime      String
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Compte GitHub/Discord relié à un utilisateur (format attendu par @auth/prisma-adapter).

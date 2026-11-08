@@ -7,7 +7,7 @@ export function identityFromSession(session: Session | null): Identity | null {
   if (!user?.id || !user.username) return null;
   return {
     key: user.id,
-    displayName: user.username,
+    displayName: user.name ?? user.username,
     image: user.image ?? null,
     isGuest: user.isGuest,
   };

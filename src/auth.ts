@@ -82,7 +82,7 @@ const adapter: Adapter = {
   },
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   adapter,
   logger: {
     error(error) {
@@ -173,18 +173,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.sub = user.id;
         token.username = user.username;
+        token.name = user.name ?? user.username;
         token.picture = user.image ?? null;
         token.isGuest = user.isGuest ?? false;
+      }
+      // Les données envoyées par le client ne sont jamais une source d'identité.
+      if (trigger === "update" && token.sub && !token.isGuest) {
+        const current = await prisma.user.findUnique({ where: { id: token.sub } });
+        if (!current) return null;
+        token.username = current.username;
+        token.name = current.name ?? current.username;
+        token.picture = current.image;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.sub ?? "";
       session.user.username = token.username ?? "";
+      session.user.name = token.name ?? token.username ?? "";
       session.user.image = token.picture ?? null;
       session.user.isGuest = token.isGuest ?? false;
       return session;

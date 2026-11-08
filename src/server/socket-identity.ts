@@ -29,7 +29,7 @@ export async function identityFromCookieHeader(cookieHeader: string | undefined)
     if (token?.sub && token.username) {
       return {
         key: token.sub,
-        displayName: token.username,
+        displayName: token.name ?? token.username,
         image: token.picture ?? null,
         isGuest: token.isGuest ?? false,
       };

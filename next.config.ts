@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // Rendu dynamique classique : la langue et le thème viennent de cookies (ADR 0009).
   // Pas de badge Next.js en développement : il recouvrait l'interface.
   devIndicators: false,
+  // 2 Mio d'image et l'enveloppe multipart ; la taille du fichier est contrôlée dans l'action.
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   // Photos de profil GitHub et Discord affichées dans l'en-tête.
   images: {
     remotePatterns: [

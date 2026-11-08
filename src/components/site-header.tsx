@@ -23,14 +23,18 @@ export async function SiteHeader({ theme }: { theme: Theme | null }) {
       </Link>
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/salles" className={buttonClass}>{m.lobby.title}</Link>
+        {user && !user.isGuest ? <>
+          <Link href="/history" className={buttonClass}>{m.history.title}</Link>
+          <Link href="/profile" className={buttonClass}>{m.profile.title}</Link>
+        </> : null}
         <LanguageSelect />
         <ThemeSelect theme={theme} />
         <SoundToggle />
         <EffectsToggle />
         {user ? (
           <div className="flex items-center gap-2">
-            <Avatar name={user.username} image={user.image} />
-            <span className="font-medium">{user.username}</span>
+            <Avatar name={user.name ?? user.username} image={user.image} />
+            <span className="font-medium">{user.name ?? user.username}</span>
             {user.isGuest ? <span className="text-sm text-ink/70">{m.header.guest}</span> : null}
             <form action={logout}>
               <button type="submit" className="icon-frame" aria-label={m.header.logout} title={m.header.logout}>

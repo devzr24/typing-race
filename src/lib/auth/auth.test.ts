@@ -54,6 +54,25 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
+describe("rafraîchissement du JWT", () => {
+  it("relit l’identité en base et ignore les données client", async () => {
+    state.user.findUnique.mockResolvedValue({ ...user, name: "nouveau", image: "/api/avatars/user-id?v=1" });
+    const callback = state.config!.callbacks!.jwt!;
+    const token = await callback({
+      token: { sub: user.id, username: "alice", name: "ancien", isGuest: false },
+      trigger: "update", session: { user: { name: "usurpe", image: "https://evil.example" } },
+    } as Parameters<typeof callback>[0]);
+    expect(token).toMatchObject({ username: "alice", name: "nouveau", picture: "/api/avatars/user-id?v=1" });
+    expect(state.user.findUnique).toHaveBeenCalledWith({ where: { id: user.id } });
+  });
+
+  it("ne relit pas les invités en base", async () => {
+    const callback = state.config!.callbacks!.jwt!;
+    await callback({ token: { sub: "guest-1", isGuest: true }, trigger: "update" } as Parameters<typeof callback>[0]);
+    expect(state.user.findUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe("authorize credentials", () => {
   it("limite aussi les POST directs par nom normalisé avant tout hachage", async () => {
     for (let i = 0; i < 10; i++) await login(" Alice ", `username-ip-${i}`);

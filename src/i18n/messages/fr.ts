@@ -24,6 +24,18 @@ export const fr = {
     effectsOff: "Effets : désactivés",
     effectsReduced: "Effets réduits par le réglage du système (mouvements réduits)",
   },
+  history: {
+    title: "Historique", empty: "Tu n’as pas encore participé à une course.", date: "Date",
+    previous: "Précédent", next: "Suivant", page: "Page {page} sur {pages}", pagination: "Pages de l’historique",
+  },
+  profile: {
+    title: "Profil", name: "Pseudonyme d’affichage", nameHint: "3 à 20 caractères, mêmes règles que le pseudo invité.",
+    saveName: "Enregistrer le pseudonyme", avatar: "Photo de profil", avatarHint: "JPEG, PNG ou WebP, 2 Mio maximum.",
+    saveAvatar: "Téléverser la photo", saved: "Modifications enregistrées.", saving: "Enregistrement…",
+    bestWpm: "Meilleur MPM", averageWpm: "MPM moyen", averageAccuracy: "Précision moyenne",
+    count: "Courses", wins: "Victoires", chart: "Progression du MPM", chartSummary: "Une valeur de MPM par course, selon sa date.",
+    point: "{date} : {mpm} MPM", empty: "Participe à une course pour voir ta progression.",
+  },
   home: {
     leaveAndJoin: "Quitter {code} et rejoindre",
     accountRequired: "Connecte-toi avec un compte pour créer une salle.",
@@ -157,6 +169,11 @@ export const fr = {
     states: { EN_ATTENTE: "En attente", DECOMPTE: "Décompte", EN_COURSE: "En course", RESULTATS: "Résultats", FERMEE: "Fermée" },
   },
   errors: {
+    profileAccountRequired: "Connecte-toi avec un compte pour accéder au profil et à l’historique.",
+    displayNameTaken: "Ce pseudonyme est réservé à un autre utilisateur.",
+    avatarType: "Choisis une image JPEG, PNG ou WebP.",
+    avatarTooLarge: "La photo ne peut pas dépasser 2 Mio.",
+    avatarUnreadable: "Cette image est vide, illisible ou trop grande à décoder.",
     alreadyInRoom: "Tu es déjà dans une autre salle.",
     roomInviteRequired: "Un lien d’invitation est nécessaire pour rejoindre cette salle privée.",
     inviteInvalid: "Ce lien d’invitation est invalide, révoqué ou utilisé par une autre personne ou adresse IP.",

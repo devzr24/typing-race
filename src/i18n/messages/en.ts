@@ -24,6 +24,18 @@ export const en: Messages = {
     effectsOff: "Effects: off",
     effectsReduced: "Effects reduced by your system setting (reduced motion)",
   },
+  history: {
+    title: "History", empty: "You have not taken part in a race yet.", date: "Date",
+    previous: "Previous", next: "Next", page: "Page {page} of {pages}", pagination: "History pages",
+  },
+  profile: {
+    title: "Profile", name: "Display name", nameHint: "3 to 20 characters, with the same rules as a guest nickname.",
+    saveName: "Save display name", avatar: "Profile photo", avatarHint: "JPEG, PNG or WebP, up to 2 MiB.",
+    saveAvatar: "Upload photo", saved: "Changes saved.", saving: "Saving…",
+    bestWpm: "Best WPM", averageWpm: "Average WPM", averageAccuracy: "Average accuracy",
+    count: "Races", wins: "Wins", chart: "WPM progression", chartSummary: "One WPM value per race, plotted by date.",
+    point: "{date}: {mpm} WPM", empty: "Take part in a race to see your progression.",
+  },
   home: {
     leaveAndJoin: "Leave {code} and join",
     accountRequired: "Log in with an account to create a room.",
@@ -157,6 +169,11 @@ export const en: Messages = {
     states: { EN_ATTENTE: "Waiting", DECOMPTE: "Countdown", EN_COURSE: "Racing", RESULTATS: "Results", FERMEE: "Closed" },
   },
   errors: {
+    profileAccountRequired: "Log in with an account to access your profile and history.",
+    displayNameTaken: "This display name is reserved for another user.",
+    avatarType: "Choose a JPEG, PNG or WebP image.",
+    avatarTooLarge: "The photo cannot exceed 2 MiB.",
+    avatarUnreadable: "This image is empty, unreadable or too large to decode.",
     alreadyInRoom: "You are already in another room.",
     roomInviteRequired: "An invitation link is required to join this private room.",
     inviteInvalid: "This invitation link is invalid, revoked or used by another person or IP address.",
