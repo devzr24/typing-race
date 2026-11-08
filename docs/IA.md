@@ -29,7 +29,7 @@ Playwright) et une relecture.
 - [`.claude/scripts/delegate.ts`](../.claude/scripts/delegate.ts) : pont vers Codex (délégation,
   relecture, quota).
 
-## Trois situations où l'IA s'est trompée
+## Situations où l'IA s'est trompée
 
 ### 1. Une course qui ne se termine jamais
 
@@ -70,6 +70,47 @@ animée et les transitions des marqueurs ; le glitch a été relevé par la rele
 animation du logo rétablie. L'objectif de 50 images/s n'est toujours pas atteint avec la piste à
 l'écran dans ce cadre de mesure : l'exigence PERF-03 est déclarée **partielle** avec les chiffres,
 et le test correspondant est marqué `fixme` plutôt que d'abaisser son seuil.
+
+### 4. Seuil de retard et gigue réseau (PR #9)
+
+Les calculs de course et les bonus de remontée (commit `7fbdec2`) comparaient l'écart au meneur
+au seuil de 25 points et validaient la vraisemblance des frappes. La relecture croisée par Sonnet
+a relevé deux défauts, corrigés dans la même PR (description de la PR #9) : la comparaison au
+seuil sensible à l'arrondi des nombres à virgule, et un joueur légitime rejeté à cause de la gigue
+réseau (paquets de frappes arrivés trop rapprochés).
+**Correction** : comparaison stricte avec une marge `EPSILON` (`src/lib/race/bonus.ts`) et
+tolérance de gigue dans `isPlausibleProgress` (`src/lib/race/metrics.ts`), avec le test « accepte
+la gigue de 10 ms » (`src/lib/race/metrics.test.ts`).
+**Limite de la preuve** : la correction a été faite avant le commit unique de la PR ; l'historique
+Git ne montre donc pas la version fautive, seulement la correction et sa mention dans la PR.
+
+### 5. Un `node_modules` effacé par l'orchestrateur lui-même
+
+Le 2026-11-07, pour faire travailler deux agents en parallèle, l'orchestrateur (Claude Opus) avait
+créé des worktrees Git dont le `node_modules` était une jonction Windows vers celui du dépôt
+principal. À la fin, sa commande retirait la jonction avec `cmd /c rmdir` puis lançait
+`git worktree remove --force`. Le `rmdir` a échoué sans message (échappement des barres obliques
+dans Git Bash), et la suppression du worktree a suivi la jonction : le `node_modules` du dépôt
+principal a été vidé, alors qu'une autre session l'utilisait.
+**Détection** : commandes en échec juste après (modules introuvables).
+**Correction** : `npm ci`, prévenir l'autre session, puis consigner la procédure (retirer la
+jonction en PowerShell et vérifier qu'elle a disparu avant `git worktree remove`). Depuis, les
+lots parallèles travaillent dans le même dossier, sans worktree (`.claude/workflow/orchestrator.md`).
+Aucune trace dans Git : l'incident n'a touché que des fichiers ignorés.
+
+### 6. Des résultats diffusés avant d'être enregistrés
+
+La fin de course diffusait les résultats aux joueurs avant leur écriture en base : un lien vers la
+course enregistrée pouvait mener à une page encore vide, et les records étaient calculés hors de la
+transaction (une première course comptait comme record). Corrigé par `7b770a9`
+(`src/lib/race/persist.ts`, `src/server/race-runtime.ts`), avec des tests de persistance et du
+moteur. Un autre défaut, l'avis « vous n'êtes plus dans la salle » affiché après un départ
+volontaire, a été corrigé par `0666ab7` (`src/app/room/[code]/room-view.tsx`).
+
+> **Note de vérification** : un cas avancé de mémoire, « bots trop lents pour leur niveau malgré un
+> test vert » (PR #8), n'a pas été retenu : aucun commit de correction ne touche `src/lib/bots/`, et
+> une simulation de 200 graines par niveau sur le code de la PR donne des vitesses dans les plages
+> annoncées. Le test tolère toutefois 10 % sous le minimum par course et ne vérifie pas la moyenne.
 
 ## Façon de travailler avec les agents
 
