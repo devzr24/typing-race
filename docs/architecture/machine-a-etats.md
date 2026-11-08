@@ -11,7 +11,7 @@ stateDiagram-v2
     [*] --> EN_ATTENTE : création par un compte inscrit
     EN_ATTENTE --> DECOMPTE : hôte lance [≥ 2 participants, dont ≥ 1 humain actif, texte généré]
     DECOMPTE --> EN_COURSE : minuterie serveur [startsAt atteint, après 3 s]
-    EN_COURSE --> RESULTATS : finishRace ou temps maximal écoulé
+    EN_COURSE --> RESULTATS : tous arrivés ou abandonnés, ou temps maximal écoulé
     RESULTATS --> EN_ATTENTE : nouvelle course [hôte courant]
     EN_ATTENTE --> FERMEE : hôte ferme ou dernier humain parti
     DECOMPTE --> FERMEE : hôte ferme ou dernier humain parti
@@ -31,14 +31,18 @@ stateDiagram-v2
   `serverNow` permet aux clients d'afficher le décompte même si leurs horloges diffèrent.
   La minuterie serveur passe en course après trois secondes. La limite optionnelle
   commence à `startsAt`, pas au début du décompte.
-- `finishRace` prépare le raccordement au futur moteur de course. Aucun classement,
-  suivi de frappe ou arrêt automatique selon la progression n'est implémenté ici.
+- Le runtime serveur détient les frappes humaines et les minuteries des bots. Il appelle
+  `finishRace` quand il ne reste aucun coureur actif, ou après expiration du temps maximal.
+  Le classement et les statistiques restent en mémoire et dans `PublicRoom.results`
+  en `RESULTATS`, jusqu'au reset ou à la fermeture ; aucune persistance des résultats.
 - L'hôte peut modifier la configuration et ajouter/retirer des bots en `EN_ATTENTE`
   et `RESULTATS` seulement. Ces changements sont persistés et diffusés à toute la salle.
-  Une nouvelle course conserve participants, bots et configuration, et efface le texte.
-- On rejoint uniquement une salle en attente ; un participant déjà présent peut se
-  reconnecter. Les départs conservent le délai de grâce de 30 s et le transfert d'hôte
-  au plus ancien humain restant. Les bots ne deviennent jamais hôtes.
+  Une nouvelle course conserve participants, bots et configuration, et efface texte et résultats.
+- On rejoint une salle en attente ou aux résultats ; un participant déjà présent peut se
+  reconnecter. En course, la déconnexion conserve sa position pendant 30 s, puis le marque
+  abandonné sans retirer sa présence. `room:watch` restitue son texte modifié et sa position.
+  Hors course, le départ conserve le délai de grâce et le transfert d'hôte existants.
+  Les bots ne deviennent jamais hôtes.
 - Fermer la salle, ou retirer le dernier humain, passe par `FERMEE` puis supprime la
   salle et annule sa minuterie. `room:update: null` informe tous les abonnés.
 - Au redémarrage du processus, texte et minuteries sont perdus ; les présences

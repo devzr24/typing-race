@@ -2,6 +2,7 @@ import type { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/lib/rooms/events";
 import { roomStore } from "@/lib/rooms/prisma-store";
 import { listLobbyRooms, toPublicRoom } from "@/lib/rooms/service";
+import { setRaceTransport } from "./race-runtime";
 
 export type RealtimeServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -12,6 +13,14 @@ type GlobalWithIO = typeof globalThis & { [IO_KEY]?: RealtimeServer };
 
 export function setRealtimeServer(io: RealtimeServer): void {
   (globalThis as GlobalWithIO)[IO_KEY] = io;
+  setRaceTransport({
+    room: (...[code, event, payload]) => {
+      if (event === "race:state") io.to(roomChannel(code)).emit(event, payload);
+      if (event === "race:bonus") io.to(roomChannel(code)).emit(event, payload);
+      if (event === "race:results") io.to(roomChannel(code)).emit(event, payload);
+    },
+    self: (code, id, self) => { io.to(raceSelfChannel(code, id)).emit("race:self", self); },
+  });
 }
 
 export function getRealtimeServer(): RealtimeServer | undefined {
@@ -20,6 +29,10 @@ export function getRealtimeServer(): RealtimeServer | undefined {
 
 export function roomChannel(code: string): string {
   return `room:${code}`;
+}
+
+export function raceSelfChannel(code: string, id: string): string {
+  return `race-self:${code}:${id}`;
 }
 
 export async function connectedRoomKeys(code: string): Promise<ReadonlySet<string>> {
@@ -32,6 +45,9 @@ export async function removeRoomSockets(code: string, key: string, error: "roomK
   for (const socket of sockets) {
     if (socket.data.identity?.key !== key) continue;
     socket.emit("room:removed", error);
+    for (const channel of socket.rooms) {
+      if (channel.startsWith(`race-self:${code}:`)) await socket.leave(channel);
+    }
     await socket.leave(roomChannel(code));
   }
 }

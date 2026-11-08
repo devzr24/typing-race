@@ -1,9 +1,11 @@
-import { roomCommandSchema, roomWatchSchema } from "@/lib/rooms/schemas";
+import { raceAbandonSchema, raceInputSchema, roomCommandSchema, roomWatchSchema } from "@/lib/rooms/schemas";
 import { roomStore } from "@/lib/rooms/prisma-store";
 import { executeHostCommand, leaveRoom, listLobbyRooms, toPublicRoom } from "@/lib/rooms/service";
 import type { Identity } from "@/lib/rooms/types";
-import { connectedRoomKeys, publishRoom, removeRoomSockets, roomChannel, type RealtimeServer } from "./realtime";
+import { connectedRoomKeys, publishRoom, raceSelfChannel, removeRoomSockets, roomChannel, type RealtimeServer } from "./realtime";
 import { identityFromCookieHeader } from "./socket-identity";
+import { activeRaces } from "@/lib/rooms/race-memory";
+import { raceSelf } from "@/lib/race/engine";
 
 /**
  * Délai avant de considérer qu'un participant déconnecté a quitté la salle (ADR 0006).
@@ -56,6 +58,53 @@ export function registerRoomHandlers(io: RealtimeServer): void {
   io.on("connection", (socket) => {
     const data = socket.data as SocketData;
 
+    socket.on("race:input", (payload, ack) => {
+      if (typeof ack !== "function") return;
+      try {
+        const parsed = raceInputSchema.safeParse(payload);
+        if (!parsed.success) return ack({ ok: false, error: "raceInputInvalid" });
+        if (!data.identity) return ack({ ok: false, error: "loginRequired" });
+        const race = activeRaces.get(parsed.data.code);
+        const session = race?.sessions?.get(data.identity.key);
+        if (!race?.runtime || !session || race.results
+          || !race.state?.racers.some((r) => r.id === session.id && r.status === "racing")) {
+          return ack({ ok: false, error: "raceNotRacing" });
+        }
+        const now = Date.now();
+        session.inputTimes = session.inputTimes.filter((time) => now - time < 1000);
+        if (session.inputTimes.length >= 10) return ack({ ok: false, error: "raceTooFast" });
+        session.inputTimes.push(now);
+        if (parsed.data.seq <= session.sequence) return ack({ ok: false, error: "raceSequenceInvalid" });
+        const result = race.runtime.input(session.id, parsed.data.keys);
+        if (!result.ok) return ack(result);
+        session.sequence = parsed.data.seq;
+        ack({ ok: true, position: result.position, errors: result.errors });
+      } catch (error) {
+        console.error("> race:input", error);
+        ack({ ok: false, error: "serverError" });
+      }
+    });
+
+    socket.on("race:abandon", async (payload, ack) => {
+      if (typeof ack !== "function") return;
+      try {
+        const parsed = raceAbandonSchema.safeParse(payload);
+        if (!parsed.success) return ack({ ok: false, error: "roomCodeInvalid" });
+        const identity = await identityFromCookieHeader(socket.request.headers.cookie);
+        if (!identity || identity.key !== data.identity?.key) return ack({ ok: false, error: "loginRequired" });
+        await roomStore.withRoom(parsed.data.code, async (room) => {
+          const participant = room?.participants.find((p) => p.key === identity.key);
+          if (!participant || room?.bannedKeys.includes(identity.key)) return ack({ ok: false, error: "notInRoom" });
+          if (participant.isSpectator || room?.status !== "EN_COURSE"
+            || !activeRaces.get(parsed.data.code)?.runtime?.abandon(participant.id)) return ack({ ok: false, error: "raceNotRacing" });
+          ack({ ok: true });
+        });
+      } catch (error) {
+        console.error("> race:abandon", error);
+        ack({ ok: false, error: "serverError" });
+      }
+    });
+
     socket.on("lobby:watch", async (ack) => {
       if (typeof ack !== "function") return;
       try {
@@ -100,7 +149,10 @@ export function registerRoomHandlers(io: RealtimeServer): void {
           cancelDeparture(code, identity.key);
           data.watched.add(code);
           await socket.join(roomChannel(code));
-          ack({ ok: true, room: toPublicRoom(room), selfId: self.id });
+          if (!self.isSpectator) await socket.join(raceSelfChannel(code, self.id));
+          const state = activeRaces.get(code)?.state;
+          const currentSelf = state && !self.isSpectator ? raceSelf(state, self.id) : undefined;
+          ack({ ok: true, room: toPublicRoom(room), selfId: self.id, ...(currentSelf ? { self: currentSelf } : {}) });
         });
       } catch (error) {
         console.error("> room:watch :", error);

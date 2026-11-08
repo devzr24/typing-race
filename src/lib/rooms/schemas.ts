@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { normalizeRoomCode, validateRoomCode } from "./code";
+import { MAX_CHARACTERS_PER_MESSAGE } from "@/lib/race/metrics";
 
 export const hostRoleSchema = z.enum(["participant", "spectator"]);
 export const roomCodeSchema = z.string({ error: "roomCodeInvalid" }).transform(normalizeRoomCode)
@@ -19,6 +20,11 @@ export const roomPathCodeSchema = z.string()
   })
   .pipe(roomCodeSchema);
 export const roomWatchSchema = z.object({ code: roomCodeSchema });
+export const raceInputSchema = z.object({
+  code: roomCodeSchema, seq: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  keys: z.string().min(1).max(MAX_CHARACTERS_PER_MESSAGE),
+}).strict();
+export const raceAbandonSchema = roomWatchSchema.strict();
 export const inviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 export const roomAccessSchema = z.object({
   visibility: z.enum(["PUBLIQUE", "SUR_CODE", "PRIVEE"]),
