@@ -15,6 +15,10 @@ test("course complète avec un bot et arrivée du joueur", async ({ page }) => {
   const track = page.getByRole("region", { name: "Piste de course" });
   await expect(track.getByRole("listitem")).toHaveCount(2);
   await expect(track.getByText("bot", { exact: true })).toBeVisible();
+  await expect.poll(() => track.locator("canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const pixels = canvas.getContext("2d")?.getImageData(0, 0, canvas.width, canvas.height).data;
+    return pixels?.some((value, index) => index % 4 === 3 && value > 0) ?? false;
+  })).toBe(true);
   const text = await page.getByRole("region", { name: "Texte de la course" }).innerText();
   expect(text.split(/\s+/)).toHaveLength(10);
   await page.getByLabel("Zone de frappe", { exact: true }).focus();
