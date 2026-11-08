@@ -27,10 +27,10 @@ function fixture(registered = true) {
 
 function storage(best: number | null = null) {
   const create = vi.fn<(args: Prisma.RaceCreateArgs) => Promise<{ id: string }>>(async () => ({ id: "saved-race" }));
-  const aggregate = vi.fn<(args: Prisma.RaceResultAggregateArgs) => Promise<{ _max: { wpm: number | null } }>>(async () => ({ _max: { wpm: best } }));
-  const tx = { race: { create }, raceResult: { aggregate } };
+  const groupBy = vi.fn<(args: Prisma.RaceResultGroupByArgs) => Promise<{ userId: string; _max: { wpm: number | null } }[]>>(async () => best === null ? [] : [{ userId: "user", _max: { wpm: best } }]);
+  const tx = { race: { create } };
   const transaction = vi.fn(async (write: (tx: unknown) => Promise<unknown>) => write(tx));
-  return { db: { $transaction: transaction } as unknown as RaceStorage, transaction, create, aggregate };
+  return { db: { raceResult: { groupBy }, $transaction: transaction } as unknown as RaceStorage, transaction, create, groupBy };
 }
 
 describe("persistance des résultats", () => {
@@ -43,7 +43,7 @@ describe("persistance des résultats", () => {
 
   it("enregistre tout le classement dans une seule écriture, sans userId pour invités et bots", async () => {
     const { room, race } = fixture();
-    const db = storage();
+    const db = storage(49);
     expect(await persistRace(room, race, db.db)).toEqual({ id: "saved-race", personalBests: [true, false, false] });
     expect(db.transaction).toHaveBeenCalledOnce();
     expect(db.create).toHaveBeenCalledOnce();
@@ -55,11 +55,12 @@ describe("persistance des résultats", () => {
         { userId: null, kind: "BOT", isPersonalBest: false },
       ] },
     });
-    expect(db.aggregate).toHaveBeenCalledWith({ where: { userId: "user", outcome: "TERMINE" }, _max: { wpm: true } });
+    expect(db.groupBy).toHaveBeenCalledExactlyOnceWith({ by: ["userId"], where: { userId: { in: ["user"] }, outcome: "TERMINE" }, _max: { wpm: true } });
+    expect(db.groupBy.mock.invocationCallOrder[0]).toBeLessThan(db.transaction.mock.invocationCallOrder[0]);
   });
 
   it.each([
-    [null, true], [49, true], [50, false], [51, false],
+    [null, false], [49, true], [50, false], [51, false],
   ])("meilleur précédent %s : record %s", async (best, expected) => {
     const { room, race } = fixture();
     const db = storage(best);
@@ -71,7 +72,22 @@ describe("persistance des résultats", () => {
     race.results![0].status = status;
     const db = storage();
     expect((await persistRace(room, race, db.db))?.personalBests[0]).toBe(false);
-    expect(db.aggregate).not.toHaveBeenCalled();
+    expect(db.groupBy).not.toHaveBeenCalled();
+  });
+
+  it("charge les records de plusieurs inscrits en une seule requête avant la transaction", async () => {
+    const { room, race } = fixture();
+    room.participants[1].isGuest = false;
+    Object.assign(race.results![1], { status: "finished", netMpm: 40 });
+    const db = storage();
+    db.groupBy.mockResolvedValueOnce([
+      { userId: "guest-session", _max: { wpm: 45 } }, { userId: "user", _max: { wpm: 49 } },
+    ]);
+    expect((await persistRace(room, race, db.db))?.personalBests).toEqual([true, false, false]);
+    expect(db.groupBy).toHaveBeenCalledExactlyOnceWith({
+      by: ["userId"], where: { userId: { in: ["user", "guest-session"] }, outcome: "TERMINE" }, _max: { wpm: true },
+    });
+    expect(db.groupBy.mock.invocationCallOrder[0]).toBeLessThan(db.transaction.mock.invocationCallOrder[0]);
   });
 
   it("déduplique deux fins concurrentes et une fin déjà persistée", async () => {
@@ -85,12 +101,16 @@ describe("persistance des résultats", () => {
     expect(db.create).toHaveBeenCalledOnce();
   });
 
-  it("ne retente pas une transaction échouée à la seconde finalisation", async () => {
+  it.each(["groupBy", "transaction"] as const)("permet une nouvelle tentative après un échec de %s et la déduplique", async (operation) => {
     const { room, race } = fixture();
     const db = storage();
-    db.transaction.mockRejectedValueOnce(new Error("unavailable"));
+    db[operation].mockRejectedValueOnce(new Error("unavailable"));
     await expect(persistRace(room, race, db.db)).rejects.toThrow("unavailable");
-    await expect(persistRace(room, race, db.db)).rejects.toThrow("unavailable");
-    expect(db.transaction).toHaveBeenCalledOnce();
+    const retry = persistRace(room, race, db.db);
+    expect(persistRace(room, race, db.db)).toBe(retry);
+    await expect(retry).resolves.toMatchObject({ id: "saved-race" });
+    expect(await persistRace(room, race, db.db)).toEqual(await retry);
+    expect(db[operation]).toHaveBeenCalledTimes(2);
+    expect(db.create).toHaveBeenCalledOnce();
   });
 });

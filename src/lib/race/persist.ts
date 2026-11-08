@@ -2,8 +2,9 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ActiveRace } from "@/lib/rooms/race-memory";
 import type { Room } from "@/lib/rooms/types";
 
-type Transaction = Pick<Prisma.TransactionClient, "race" | "raceResult">;
+type Transaction = Pick<Prisma.TransactionClient, "race">;
 export type RaceStorage = {
+  raceResult: Pick<Prisma.TransactionClient["raceResult"], "groupBy">;
   $transaction<T>(write: (tx: Transaction) => Promise<T>): Promise<T>;
 };
 type Persisted = { id: string; personalBests: boolean[] };
@@ -26,17 +27,16 @@ export function persistRace(room: Room, race: ActiveRace, storage?: RaceStorage)
     });
     if (!userIds.some(Boolean)) return null;
     const db: RaceStorage = storage ?? (await import("@/lib/prisma")).prisma;
+    const finishedUserIds = userIds.filter((id, index): id is string => id !== null && results[index].status === "finished");
+    const bests = finishedUserIds.length ? await db.raceResult.groupBy({
+      by: ["userId"], where: { userId: { in: finishedUserIds }, outcome: "TERMINE" }, _max: { wpm: true },
+    }) : [];
+    const previousBests = new Map(bests.map((best) => [best.userId, best._max.wpm]));
+    const personalBests = results.map((result, index) => {
+      const best = previousBests.get(userIds[index]);
+      return result.status === "finished" && best != null && result.netMpm > best;
+    });
     return db.$transaction(async (tx) => {
-      const personalBests: boolean[] = [];
-      for (const [index, result] of results.entries()) {
-        const userId = userIds[index];
-        let isPersonalBest = false;
-        if (userId && result.status === "finished") {
-          const best = await tx.raceResult.aggregate({ where: { userId, outcome: "TERMINE" }, _max: { wpm: true } });
-          isPersonalBest = best._max.wpm === null || result.netMpm > best._max.wpm;
-        }
-        personalBests.push(isPersonalBest);
-      }
       const saved = await tx.race.create({ data: {
         roomCode: room.code, text: state.text, config: { ...state.config },
         startedAt: new Date(state.startsAt), endedAt: new Date(state.now),
@@ -52,7 +52,10 @@ export function persistRace(room: Room, race: ActiveRace, storage?: RaceStorage)
       return { id: saved.id, personalBests };
     });
   };
-  const promise = write();
+  const promise = write().catch((error: unknown) => {
+    pending.delete(race);
+    throw error;
+  });
   pending.set(race, promise);
   return promise;
 }

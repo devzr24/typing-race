@@ -106,7 +106,7 @@ Mise à jour : 2026-11-08.
 | COURSE-08 | partiel | `src/server/room-socket.ts`, `src/lib/rooms/race-memory.ts`, `src/server/race-runtime.ts`, `src/app/room/[code]/typing-zone.tsx` | `src/server/race-runtime.test.ts`, `e2e/room.spec.ts`, `src/lib/race/typing-state.test.ts`, `e2e/race.spec.ts` (CI, non exécuté localement) | room:watch initialise la zone avec self ; à la reconnexion, tampon abandonné et nouvelle base serveur. Séquence initialisée à l’horloge pour dépasser celle d’avant rechargement. **Manque** : la reprise après rechargement n'est vérifiée par aucun test de bout en bout. |
 | COURSE-09 | complet | `src/lib/race/engine.ts`, `src/server/race-runtime.ts`, `src/lib/rooms/service.ts` | `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts` | Fin automatique (`finishRace`) dès qu'aucun coureur n'est encore en course (arrivés, abandons, départs, expulsions, déconnexions de plus de 30 s), même sans temps maximal, ou au temps maximal (les coureurs restants passent « temps écoulé »). |
 | COURSE-10 | complet | `src/lib/race/ranking.ts`, `src/lib/race/engine.ts`, `src/lib/rooms/service.ts`, `src/components/race-results.tsx` | `src/lib/race/ranking.test.ts`, `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts`, `e2e/race.spec.ts` (non exécuté localement) | Classement final : arrivés par temps, timeout par progression, puis abandons par progression figée. Statistiques diffusées, affichées et conservées en mémoire jusqu'au reset/close. |
-| COURSE-11 | complet | `src/app/room/[code]/room-view.tsx`, `src/lib/rooms/service.ts` | `src/lib/rooms/race.test.ts` | En résultats : hôte = nouvelle course / fermer ; autres = rester / quitter. Configuration et participants conservés. |
+| COURSE-11 | complet | `src/app/room/[code]/room-view.tsx`, `src/lib/rooms/service.ts` | `src/lib/rooms/race.test.ts` | En résultats : hôte = nouvelle course / fermer ; autres restent (comportement par défaut) ou quittent. Configuration et participants conservés. |
 
 ## 5.7 Bots
 
@@ -134,8 +134,8 @@ Mise à jour : 2026-11-08.
 | RES-01 | complet | `src/components/race-results.tsx` | `e2e/race.spec.ts` (étendu, non exécuté localement) | Podium des trois premiers, avatars, noms et MPM. |
 | RES-02 | complet | `src/components/race-results.tsx`, `src/i18n/messages/` | `e2e/race.spec.ts` (étendu, non exécuté localement) | Classement complet ; métriques, durées et nombres formatés avec Intl en FR/EN. |
 | RES-03 | complet | `src/components/race-results.tsx`, `src/lib/race/results-visuals.ts` | `src/lib/race/results-visuals.test.ts` | SVG commun, axes gradués, motifs distincts, légende et résumé ; clavier AZERTY/QWERTY avec intensités et comptes accessibles. |
-| RES-04 | complet | `src/lib/race/persist.ts`, `src/components/race-results.tsx` | `src/lib/race/persist.test.ts` | Record strict, courses terminées uniquement, indiqué au joueur local. |
-| RES-05 | complet | `prisma/schema.prisma`, `prisma/migrations/20261108120000_resultats/`, `src/lib/race/persist.ts`, `src/server/race-runtime.ts` | `src/lib/race/persist.test.ts`, `src/server/race-runtime.test.ts` | Une transaction finale dédupliquée si au moins un inscrit coureur ; invités/bots sans userId ; échec journalisé sans casser la salle. |
+| RES-04 | complet | `src/lib/race/persist.ts`, `src/components/race-results.tsx` | `src/lib/race/persist.test.ts` | Record strict au-dessus du meilleur MPM précédent (une première course n'est pas un record battu), courses terminées uniquement, indiqué au joueur local. |
+| RES-05 | complet | `prisma/schema.prisma`, `prisma/migrations/20261108120000_resultats/`, `src/lib/race/persist.ts`, `src/server/race-runtime.ts` | `src/lib/race/persist.test.ts`, `src/server/race-runtime.test.ts` | Une transaction finale dédupliquée si au moins un inscrit coureur ; invités/bots sans userId ; résultats diffusés sans attendre l'écriture, une nouvelle tentative après 2 s, puis échec journalisé sans casser la salle. |
 
 ## 5.10 Historique
 

@@ -94,9 +94,11 @@ function sockets() {
 }
 
 describe("minuteries de course", () => {
-  it("persiste une seule fois après la fin puis diffuse l'id et le record sans clé de session", async () => {
+  it("diffuse immédiatement puis enrichit les résultats après une seule persistance, sans clé de session", async () => {
     const race = await start("ab");
-    vi.mocked(persistRace).mockResolvedValueOnce({ id: "saved-race", personalBests: [true, false] });
+    let resolve!: (value: Awaited<ReturnType<typeof persistRace>>) => void;
+    vi.mocked(persistRace).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    publish.mockClear();
     expect(persistRace).not.toHaveBeenCalled();
     race.runtime!.input(race.state!.racers[0].id, "a");
     expect(persistRace).not.toHaveBeenCalled();
@@ -105,28 +107,89 @@ describe("minuteries de course", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(persistRace).toHaveBeenCalledOnce();
     expect((await store.findRoom(code))!.status).toBe("RESULTATS");
+    expect(publish).toHaveBeenCalledOnce();
+    expect(send.mock.calls.filter(([, event]) => event === "race:results")).toHaveLength(1);
+    expect(race.results!.every((r) => !r.raceId && !r.isPersonalBest)).toBe(true);
+    expect(toPublicRoom((await store.findRoom(code))!).results).toEqual(race.results);
+    resolve({ id: "saved-race", personalBests: [true, false] });
+    await vi.advanceTimersByTimeAsync(0);
     expect(race.results![0]).toMatchObject({ raceId: "saved-race", isPersonalBest: true });
     expect(toPublicRoom((await store.findRoom(code))!).results).toEqual(race.results);
     const results = send.mock.calls.filter(([, event]) => event === "race:results");
-    expect(results).toHaveLength(1);
-    expect(results[0][2]).toEqual(race.results);
-    expect(JSON.stringify(results[0][2])).not.toContain('"key"');
+    expect(results).toHaveLength(2);
+    expect(results[0][2].every((r: { raceId?: string }) => !r.raceId)).toBe(true);
+    expect(results[1][2]).toEqual(race.results);
+    expect(publish).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(results)).not.toContain('"key"');
     race.runtime!.abandon(race.state!.racers[0].id);
     await vi.advanceTimersByTimeAsync(1000);
     expect(persistRace).toHaveBeenCalledOnce();
   });
-  it("journalise l'échec de persistance et diffuse quand même les résultats", async () => {
+  it("retente la persistance après deux secondes et enrichit les résultats", async () => {
+    const race = await start("a");
+    vi.mocked(persistRace).mockRejectedValueOnce(new Error("storage unavailable"))
+      .mockResolvedValueOnce({ id: "saved-race", personalBests: [false, false] });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    race.runtime!.abandon(race.state!.racers[0].id);
+    race.runtime!.abandon(race.state!.racers[1].id);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(persistRace).toHaveBeenCalledOnce();
+    expect(send.mock.calls.filter(([, event]) => event === "race:results")).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(persistRace).toHaveBeenCalledTimes(2);
+    expect(race.results!.every((r) => r.raceId === "saved-race")).toBe(true);
+    expect(send.mock.calls.filter(([, event]) => event === "race:results")).toHaveLength(2);
+    expect(log).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(persistRace).toHaveBeenCalledTimes(2);
+  });
+  it("journalise après deux échecs et conserve les résultats immédiats", async () => {
     const race = await start("a");
     const failure = new Error("storage unavailable");
-    vi.mocked(persistRace).mockRejectedValueOnce(failure);
+    vi.mocked(persistRace).mockRejectedValue(failure);
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     race.runtime!.abandon(race.state!.racers[0].id);
     race.runtime!.abandon(race.state!.racers[1].id);
     await vi.advanceTimersByTimeAsync(0);
-    expect(log).toHaveBeenCalledWith("> race persist", failure);
+    expect(log).not.toHaveBeenCalled();
     expect((await store.findRoom(code))!.status).toBe("RESULTATS");
     expect(send.mock.calls.filter(([, event]) => event === "race:results")).toHaveLength(1);
     expect(race.results!.every((r) => !r.raceId && !r.isPersonalBest)).toBe(true);
+    await vi.advanceTimersByTimeAsync(7000);
+    expect(persistRace).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledExactlyOnceWith("> race persist", failure);
+  });
+  it.each(["reset", "close"] as const)("ne republie pas après %s pendant une écriture", async (type) => {
+    const race = await start("a");
+    let resolve!: (value: Awaited<ReturnType<typeof persistRace>>) => void;
+    vi.mocked(persistRace).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    race.runtime!.abandon(race.state!.racers[0].id);
+    race.runtime!.abandon(race.state!.racers[1].id);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await executeHostCommand(store, code, host, { type })).toEqual({ ok: true });
+    if (type === "reset") await start("new race");
+    publish.mockClear();
+    send.mockClear();
+    resolve({ id: "saved-race", personalBests: [false, false] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(persistRace).toHaveBeenCalledOnce();
+  });
+  it.each(["reset", "close"] as const)("retente l'écriture après %s sans republier", async (type) => {
+    const race = await start("a");
+    vi.mocked(persistRace).mockRejectedValueOnce(new Error("storage unavailable"))
+      .mockResolvedValueOnce({ id: "saved-race", personalBests: [false, false] });
+    race.runtime!.abandon(race.state!.racers[0].id);
+    race.runtime!.abandon(race.state!.racers[1].id);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await executeHostCommand(store, code, host, { type })).toEqual({ ok: true });
+    publish.mockClear();
+    send.mockClear();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(persistRace).toHaveBeenCalledTimes(2);
+    expect(send).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
   });
   it.each(["départ", "expulsion"])("termine sans temps maximal après le %s du second humain", async (departure) => {
     const race = await start("a");

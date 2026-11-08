@@ -45,23 +45,35 @@ export function startRaceRuntime(store: RoomStore, room: Room, race: ActiveRace,
     const self = raceSelf(state, id);
     if (self) transport()?.self(room.code, id, self);
   }
+  function publishResults() {
+    if (activeRaces.get(room.code) !== race || !race.results) return;
+    transport()?.room(room.code, "race:results", race.results);
+    void publish(room.code).catch((error: unknown) => { console.error("> race publish", error); });
+  }
+  async function saveResults(retry = true): Promise<void> {
+    try {
+      const saved = await persistRace(room, race);
+      if (saved && activeRaces.get(room.code) === race && race.results) {
+        race.results = race.results.map((result, index) => ({
+          ...result, raceId: saved.id, isPersonalBest: saved.personalBests[index],
+        }));
+        publishResults();
+      }
+    } catch (error: unknown) {
+      if (!retry) { console.error("> race persist", error); return; }
+      setTimeout(() => {
+        void saveResults(false);
+      }, 2000);
+    }
+  }
   function finish() {
     if (!current() || finishing || !isOver(state)) return;
     finishing = true;
-    void finishRace(store, room.code).then(async (result) => {
+    void finishRace(store, room.code).then((result) => {
       if (!result.ok) finishing = false;
       if (result.ok) {
-        try {
-          const saved = await persistRace(room, race);
-          if (saved) race.results?.forEach((r, index) => {
-            r.raceId = saved.id;
-            r.isPersonalBest = saved.personalBests[index];
-          });
-        } catch (error: unknown) { console.error("> race persist", error); }
-      }
-      if (result.ok && activeRaces.get(room.code) === race && race.results) {
-        await publish(room.code);
-        transport()?.room(room.code, "race:results", race.results);
+        publishResults();
+        void saveResults();
       }
     }).catch((error: unknown) => { finishing = false; console.error("> race finish", error); });
   }

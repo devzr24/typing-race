@@ -224,7 +224,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
           socket={raceConnection.socket} connected={connection === "live"} /> : null}
       </> : null}
-      {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} /> : null}
+      {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} canOpen={room.participants.some((p) => p.id === selfId && !p.isGuest)} /> : null}
       {isHost ? <div className="flex flex-wrap gap-3">
         {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
           <button className={primaryButtonClass} disabled={!!startError || pending || connection !== "live"} aria-describedby={startError ? "start-reason" : undefined} onClick={() => command({ type: "start" })}>{m.room.start}</button>
@@ -234,7 +234,6 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
         <button className={buttonClass} disabled={pending || connection !== "live"} onClick={() => command({ type: "close" })}>{m.room.close}</button>
       </div> : null}
 
-      {room.status === "RESULTATS" && !isHost ? <button type="button" className={buttonClass}>{m.results.stay}</button> : null}
       <form action={leaveRoomAction} onSubmit={() => { leaving.current = true; }}>
         <input type="hidden" name="code" value={room.code} />
         <button type="submit" className={buttonClass}>

@@ -54,6 +54,7 @@ describe("accès aux résultats persistés", () => {
     const props = element.props.children.props;
     expect(props.selfId).toBe("result");
     expect(props.selectable).toBe(true);
+    expect(props.canOpen).toBe(true);
     expect(props.results).toMatchObject([
       { name: "Runner", raceId: "race", netMpm: 50, grossMpm: 55, status: "finished", isPersonalBest: true, series: base.wpmSeries, missedKeys: base.missedKeys },
       { name: "Bot", isBot: true },

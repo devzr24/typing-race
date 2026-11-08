@@ -30,6 +30,6 @@ export default async function RacePage({ params }: PageProps<"/races/[id]">) {
   }));
   const selfId = race.results.find((r) => r.userId === session.user.id)?.id;
   return <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
-    <RaceResults results={results} selfId={selfId} selectable />
+    <RaceResults results={results} selfId={selfId} selectable canOpen />
   </main>;
 }

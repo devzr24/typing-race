@@ -11,8 +11,8 @@ import { chartScales, keyboardMisses, keyboardRows, keyIntensity, type ResultRow
 const strokes = ["", "8 4", "2 4", "12 4 2 4", "5 3 1 3", "14 5"];
 const colors = ["text-cyan", "text-neon", "text-alert", "text-ink", "text-mist", "text-steel"];
 
-export function RaceResults({ results, selfId, selectable = false }: {
-  results: ResultRow[]; selfId?: string; selectable?: boolean;
+export function RaceResults({ results, selfId, selectable = false, canOpen = false }: {
+  results: ResultRow[]; selfId?: string; selectable?: boolean; canOpen?: boolean;
 }) {
   const { locale, m } = useI18n();
   const uid = useId();
@@ -34,16 +34,17 @@ export function RaceResults({ results, selfId, selectable = false }: {
   function keycap(key: string) {
     const label = key === " " ? m.results.space : key;
     const count = misses[key] ?? 0;
-    return <li key={key} title={`${label}${format(m.results.keyErrors, { count: integer.format(count) })}`} className="relative min-w-7 overflow-hidden rounded border border-line px-1 py-2 text-center font-mono text-sm">
+    const errors = format(m.results.keyErrors[count === 1 ? "one" : "other"], { count: integer.format(count) });
+    return <li key={key} title={`${label}${errors}`} className="relative min-w-7 overflow-hidden rounded border border-line px-1 py-2 text-center font-mono text-sm">
       <span aria-hidden className="absolute inset-0 bg-alert" style={{ opacity: keyIntensity(count, maxMisses) * 0.65 }} />
-      <span className="relative">{label}<span className="sr-only">{format(m.results.keyErrors, { count: integer.format(count) })}</span></span>
+      <span className="relative">{label}<span className="sr-only">{errors}</span></span>
     </li>;
   }
 
   return <section className="flex min-w-0 flex-col gap-6" aria-labelledby={`${uid}-title`}>
     <h2 id={`${uid}-title`} className="font-display text-xl">{m.room.results}</h2>
     {local?.isPersonalBest ? <p role="status" className="font-semibold text-neon">{m.results.personalBest}</p> : null}
-    {local?.raceId ? <Link href={`/races/${local.raceId}`} className="text-cyan underline">{m.results.permalink}</Link> : null}
+    {canOpen && local?.raceId ? <Link href={`/races/${local.raceId}`} className="text-cyan underline">{m.results.permalink}</Link> : null}
 
     <section aria-labelledby={`${uid}-podium`}>
       <h3 id={`${uid}-podium`} className="mb-3 text-lg font-medium">{m.results.podium}</h3>
