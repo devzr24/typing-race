@@ -124,6 +124,15 @@ export const fr = {
     loginRequiredTitle: "Connexion requise",
     notJoinedTitle: "Salle non rejointe",
   },
+  race: {
+    track: "Piste de course", you: "vous", inputLabel: "Zone de frappe",
+    mpm: "MPM", netMpm: "MPM net", accuracy: "Précision",
+    keyboardRecommended: "Clavier physique recommandé",
+    provisional: "Résultat provisoire", abandon: "Abandonner", cancel: "Annuler",
+    confirmAbandon: "Abandonner cette course ? Ta progression sera figée.",
+    statuses: { racing: "En course", finished: "Arrivé", abandoned: "Abandon", timeout: "Temps écoulé" },
+    bonuses: { minus3: "−3 mots", plus3: "+3 mots pour le meneur", fog: "Brouillard" },
+  },
   lobby: {
     title: "Salles publiques",
     quickRace: "Faire une course",

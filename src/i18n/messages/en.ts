@@ -124,6 +124,15 @@ export const en: Messages = {
     loginRequiredTitle: "Login required",
     notJoinedTitle: "Room not joined",
   },
+  race: {
+    track: "Race track", you: "you", inputLabel: "Typing area",
+    mpm: "WPM", netMpm: "Net WPM", accuracy: "Accuracy",
+    keyboardRecommended: "Physical keyboard recommended",
+    provisional: "Provisional result", abandon: "Abandon", cancel: "Cancel",
+    confirmAbandon: "Abandon this race? Your progress will be frozen.",
+    statuses: { racing: "Racing", finished: "Finished", abandoned: "Abandoned", timeout: "Time up" },
+    bonuses: { minus3: "−3 words", plus3: "+3 words for the leader", fog: "Fog" },
+  },
   lobby: {
     title: "Public rooms",
     quickRace: "Race now",
