@@ -15,13 +15,13 @@ export async function SiteHeader({ theme }: { theme: Theme | null }) {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-      <Link href="/" className="font-logo text-2xl">
+      <Link href="/" className="font-logo text-2xl" aria-label={m.app.name}>
         {/* data-text : copies décalées de l'effet glitch au survol (globals.css). */}
-        <span className="logo-neon" data-text={m.app.name}>
+        <span className="logo-neon" data-text={m.app.name} aria-hidden="true">
           {m.app.name}
         </span>
       </Link>
-      <div className="flex flex-wrap items-center gap-2">
+      <nav aria-label={m.header.navigation} className="flex flex-wrap items-center gap-2">
         <Link href="/salles" className={buttonClass}>{m.lobby.title}</Link>
         {user && !user.isGuest ? <>
           <Link href="/history" className={buttonClass}>{m.history.title}</Link>
@@ -47,7 +47,7 @@ export async function SiteHeader({ theme }: { theme: Theme | null }) {
             {m.header.login}
           </Link>
         )}
-      </div>
+      </nav>
     </header>
   );
 }

@@ -196,28 +196,44 @@ export function Intro({ name }: { name: string }) {
 /** Slogan tapé lettre par lettre (une fois par visite), puis affiché en entier. */
 export function TypedTagline({ text }: { text: string }) {
   // Rendu serveur : texte complet (masqué en CSS si html.type-tagline, le temps que la frappe démarre).
-  const [count, setCount] = useState(text.length);
-  const shown = text.slice(0, count);
+  const visible = useRef<HTMLSpanElement>(null);
+  const { effects, reducedMotion } = useFeedback();
 
   useEffect(() => {
     const root = document.documentElement;
+    const field = visible.current;
+    if (!field) return;
+    field.textContent = text;
+    if (!effects || reducedMotion) {
+      root.classList.remove("type-tagline");
+      return;
+    }
     if (!root.classList.contains("type-tagline")) return;
     sessionStorage.setItem(TAGLINE_TYPED_KEY, "1");
     let index = 0;
-    const timer = setInterval(() => {
-      index += 1;
-      setCount(index);
-      if (index === 1) root.classList.remove("type-tagline");
-      if (index >= text.length) clearInterval(timer);
-    }, 35);
-    return () => clearInterval(timer);
-  }, [text]);
+    let timer: ReturnType<typeof setInterval>;
+    const delay = setTimeout(() => {
+      timer = setInterval(() => {
+        index += 1;
+        field.textContent = text.slice(0, index);
+        if (index === 1) root.classList.remove("type-tagline");
+        if (index >= text.length) clearInterval(timer);
+      }, 35);
+    }, 1200);
+    return () => {
+      clearTimeout(delay);
+      clearInterval(timer);
+    };
+  }, [text, effects, reducedMotion]);
 
   return (
-    <p className="font-mono">
+    <p className="grid font-mono">
       <span className="sr-only">{text}</span>
-      <span aria-hidden="true" className="tagline-visible">
-        {shown}
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+        {text}<span className="tagline-cursor" />
+      </span>
+      <span aria-hidden="true" className="tagline-visible col-start-1 row-start-1">
+        <span ref={visible}>{text}</span>
         <span className="tagline-cursor" />
       </span>
     </p>

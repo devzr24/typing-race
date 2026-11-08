@@ -63,3 +63,32 @@ export function characterState(index: number, prediction: Prediction): "correct"
   if (index === prediction.position) return prediction.currentError ? "error" : "current";
   return "remaining";
 }
+
+export type TextSegment = { start: number; text: string; state: ReturnType<typeof characterState>; fogged: boolean };
+
+export function textSegments(prediction: Prediction, fogged: boolean): TextSegment[] {
+  const { text, position, wrongPositions } = prediction;
+  const segments: TextSegment[] = [];
+  function append(start: number, end: number, state: TextSegment["state"], fog = false) {
+    if (start >= end) return;
+    const previous = segments[segments.length - 1];
+    if (previous?.state === state && previous.fogged === fog) previous.text += text.slice(start, end);
+    else segments.push({ start, text: text.slice(start, end), state, fogged: fog });
+  }
+  let start = 0;
+  // Les erreurs du mode libre sont enregistrées dans l'ordre de frappe.
+  for (const wrong of wrongPositions) {
+    if (wrong >= position) break;
+    append(start, wrong, "correct");
+    append(wrong, wrong + 1, "error");
+    start = wrong + 1;
+  }
+  append(start, position, "correct");
+  append(position, Math.min(position + 1, text.length), characterState(position, prediction));
+  // Le mot courant reste lisible, y compris lorsque le curseur est sur un espace.
+  const wordEnd = fogged ? text.indexOf(" ", position) : -1;
+  const fogStart = wordEnd < 0 ? text.length : wordEnd + 1;
+  append(position + 1, fogStart, "remaining");
+  append(fogStart, text.length, "remaining", fogged);
+  return segments;
+}

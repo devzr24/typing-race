@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Monoton, Nunito, Righteous } from "next/font/google";
-import { ClueNetwork } from "@/components/clue-network";
+import { DeferredEffects } from "@/components/deferred-effects";
 import { EFFECTS_BOOT_SCRIPT, FeedbackProvider, Intro } from "@/components/effects";
-import { CursorHalo, MagneticButtons } from "@/components/motion-effects";
 import { SiteHeader } from "@/components/site-header";
 import { I18nProvider } from "@/i18n/client";
 import { getFeedbackPreferences, getLocale, getMessages, getTheme } from "@/i18n/server";
@@ -41,16 +40,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <I18nProvider locale={locale}>
           <FeedbackProvider initialSound={feedback.sound} initialEffects={feedback.effects}>
+            <a href="#contenu" className="skip-link">{m.app.skipToContent}</a>
             <Intro name={m.app.name} />
             {/* Réseau d'indices : au-dessus de la route, derrière le contenu (.above-effects). */}
-            <ClueNetwork />
-            <CursorHalo />
+            <DeferredEffects />
             <div className="scanlines" aria-hidden="true" />
-            <MagneticButtons />
             <div className="above-effects">
               <SiteHeader theme={theme} />
             </div>
             <div className="above-effects flex-1">{children}</div>
+            <footer className="above-effects border-t border-line px-4 py-3 text-center text-sm text-mist">
+              {m.app.footer}
+            </footer>
             {/* Route néon décorative, toujours après le contenu : jamais sous le texte. */}
             <div className="road" aria-hidden="true">
               <div className="road-grid">

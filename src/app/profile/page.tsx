@@ -39,7 +39,7 @@ export default async function ProfilePage() {
     [m.profile.averageAccuracy, percent.format(stats.averageAccuracy / 100)],
     [m.profile.count, integer.format(stats.count)], [m.profile.wins, integer.format(stats.wins)],
   ];
-  return <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
+  return <main id="contenu" tabIndex={-1} className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-10">
     <h1 className="text-2xl font-semibold">{m.profile.title}</h1>
     <div className="flex items-center gap-2"><Avatar name={user.name ?? user.username} image={user.image} />{user.name ?? user.username}</div>
     <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">{values.map(([label, value]) => <div key={label} className="rounded border border-line bg-card p-3">

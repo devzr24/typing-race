@@ -11,7 +11,8 @@ import { isJoinable } from "@/lib/rooms/state-machine";
 import type { LobbyRoom } from "@/lib/rooms/types";
 
 export function LobbyView({ initialRooms }: { initialRooms: LobbyRoom[] }) {
-  const { m } = useI18n();
+  const { locale, m } = useI18n();
+  const number = new Intl.NumberFormat(locale);
   const [rooms, setRooms] = useState(initialRooms);
   const [language, setLanguage] = useState("");
   const [complexity, setComplexity] = useState("");
@@ -40,7 +41,7 @@ export function LobbyView({ initialRooms }: { initialRooms: LobbyRoom[] }) {
     <ul className="flex flex-col gap-3" aria-live="polite">
       {filtered.map((room) => <li key={room.code} className="flex flex-col gap-2 rounded border border-line bg-card p-4">
         <h2 className="font-mono">{room.code}</h2>
-        <p>{format(m.lobby.places, { count: room.count, capacity: room.capacity })}</p>
+        <p>{format(m.lobby.places, { count: number.format(room.count), capacity: number.format(room.capacity) })}</p>
         <p>{m.room.configOptions[room.textLanguage]} · {m.room.configOptions[room.complexity]}</p>
         <p>{format(m.lobby.host, { name: room.hostName })}</p>
         <p>{m.lobby.states[room.status]}</p>

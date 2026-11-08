@@ -6,8 +6,11 @@ export const en: Messages = {
   app: {
     name: "Keyclue",
     tagline: "Real-time multiplayer typing races.",
+    skipToContent: "Skip to content",
+    footer: "Keyclue — Multiplayer typing races",
   },
   header: {
+    navigation: "Main navigation",
     login: "Log in",
     logout: "Log out",
     guest: "(guest)",

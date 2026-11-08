@@ -98,12 +98,12 @@ export function RoomConfiguration({ room, editable, command }: {
 }
 
 export function RaceCountdown({ startsAt, serverNow }: { startsAt: number; serverNow: number }) {
-  const { m } = useI18n();
+  const { locale, m } = useI18n();
   const [remaining, setRemaining] = useState(() => Math.max(1, Math.ceil((startsAt - serverNow) / 1000)));
   useEffect(() => {
     const offset = serverNow - Date.now();
     const timer = setInterval(() => setRemaining(Math.max(1, Math.ceil((startsAt - Date.now() - offset) / 1000))), 100);
     return () => clearInterval(timer);
   }, [startsAt, serverNow]);
-  return <p role="status" aria-label={m.room.countdown} className="font-mono text-4xl text-cyan">{remaining}</p>;
+  return <p role="status" aria-label={m.room.countdown} className="font-mono text-4xl text-cyan">{new Intl.NumberFormat(locale).format(remaining)}</p>;
 }

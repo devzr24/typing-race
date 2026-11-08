@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, useMotionValue, useSpring } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useFeedback } from "@/components/effects";
 import { decodeFrame } from "@/lib/decode";
@@ -28,31 +27,6 @@ export function useWideFinePointer(): boolean {
   );
 }
 
-/** Halo cyan qui suit doucement le curseur, derrière le contenu. */
-export function CursorHalo() {
-  const effectsOn = useEffectsEnabled();
-  const wideScreen = useWideFinePointer();
-  const enabled = effectsOn && wideScreen;
-  const x = useMotionValue(-1000);
-  const y = useMotionValue(-1000);
-  // Ressort souple : le halo rattrape le curseur avec un léger retard.
-  const springX = useSpring(x, { stiffness: 120, damping: 20, mass: 0.6 });
-  const springY = useSpring(y, { stiffness: 120, damping: 20, mass: 0.6 });
-
-  useEffect(() => {
-    if (!enabled) return;
-    const move = (event: PointerEvent) => {
-      x.set(event.clientX);
-      y.set(event.clientY);
-    };
-    window.addEventListener("pointermove", move, { passive: true });
-    return () => window.removeEventListener("pointermove", move);
-  }, [enabled, x, y]);
-
-  if (!enabled) return null;
-  return <motion.div className="cursor-halo" style={{ x: springX, y: springY }} aria-hidden="true" />;
-}
-
 const MAGNETIC_PULL = 0.18; // part du décalage curseur → centre du bouton
 const MAGNETIC_MAX = 6; // px
 
@@ -63,6 +37,7 @@ export function MagneticButtons() {
   useEffect(() => {
     if (!enabled) return;
     let current: HTMLElement | null = null;
+    let rect: DOMRect | undefined;
     const reset = (element: HTMLElement | null) => {
       element?.style.removeProperty("--mx");
       element?.style.removeProperty("--my");
@@ -73,9 +48,9 @@ export function MagneticButtons() {
       if (target !== current) {
         reset(current);
         current = target;
+        rect = target?.getBoundingClientRect();
       }
-      if (!target) return;
-      const rect = target.getBoundingClientRect();
+      if (!target || !rect) return;
       const clamp = (v: number) => Math.max(-MAGNETIC_MAX, Math.min(MAGNETIC_MAX, v));
       const dx = clamp((event.clientX - (rect.left + rect.width / 2)) * MAGNETIC_PULL);
       const dy = clamp((event.clientY - (rect.top + rect.height / 2)) * MAGNETIC_PULL);
@@ -85,13 +60,18 @@ export function MagneticButtons() {
     const leave = () => {
       reset(current);
       current = null;
+      rect = undefined;
     };
     document.addEventListener("pointermove", move, { passive: true });
     document.documentElement.addEventListener("pointerleave", leave);
+    window.addEventListener("scroll", leave, true);
+    window.addEventListener("resize", leave);
     return () => {
       leave();
       document.removeEventListener("pointermove", move);
       document.documentElement.removeEventListener("pointerleave", leave);
+      window.removeEventListener("scroll", leave, true);
+      window.removeEventListener("resize", leave);
     };
   }, [enabled]);
 

@@ -41,13 +41,15 @@ export function RaceResults({ results, selfId, selectable = false, canOpen = fal
     </li>;
   }
 
+  const Heading = selectable ? "h1" : "h2";
+  const Subheading = selectable ? "h2" : "h3";
   return <section className="flex min-w-0 flex-col gap-6" aria-labelledby={`${uid}-title`}>
-    <h2 id={`${uid}-title`} className="font-display text-xl">{m.room.results}</h2>
+    <Heading id={`${uid}-title`} className="font-display text-xl">{m.room.results}</Heading>
     {local?.isPersonalBest ? <p role="status" className="font-semibold text-neon">{m.results.personalBest}</p> : null}
     {canOpen && local?.raceId ? <Link href={`/races/${local.raceId}`} className="text-cyan underline">{m.results.permalink}</Link> : null}
 
     <section aria-labelledby={`${uid}-podium`}>
-      <h3 id={`${uid}-podium`} className="mb-3 text-lg font-medium">{m.results.podium}</h3>
+      <Subheading id={`${uid}-podium`} className="mb-3 text-lg font-medium">{m.results.podium}</Subheading>
       <ol className="grid grid-cols-3 gap-2">
         {results.slice(0, 3).map((r) => <li key={r.id} className="flex min-w-0 flex-col items-center gap-2 rounded border border-line bg-card p-3 text-center">
           <span className="font-display text-xl text-cyan">{integer.format(r.rank)}</span>
@@ -59,7 +61,8 @@ export function RaceResults({ results, selfId, selectable = false, canOpen = fal
       </ol>
     </section>
 
-    <div className="overflow-x-auto">
+    {/* Zone défilante atteignable au clavier (WCAG : scrollable-region-focusable). */}
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={m.results.table}>
       <table className="w-full text-left text-sm">
         <caption className="mb-3 text-left text-lg font-medium">{m.results.table}</caption>
         <thead><tr>{[m.results.rank, m.results.participant, m.race.netMpm, m.results.rawMpm, m.race.accuracy, m.results.errors, m.results.time, m.results.status, m.results.bonuses].map((label) => <th key={label} scope="col" className="border-b border-line px-2 py-3 whitespace-nowrap">{label}</th>)}</tr></thead>
@@ -108,9 +111,9 @@ export function RaceResults({ results, selfId, selectable = false, canOpen = fal
 
     {selectable ? <label className="flex flex-col gap-2">{m.results.chooseParticipant}<select className={inputClass} value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{results.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label> : null}
     {selected ? <section aria-labelledby={`${uid}-keyboard`} className="flex flex-col gap-3">
-      <h3 id={`${uid}-keyboard`} className="text-lg font-medium">{format(m.results.keyboard, { name: selected.name })}</h3>
+      <Subheading id={`${uid}-keyboard`} className="text-lg font-medium">{format(m.results.keyboard, { name: selected.name })}</Subheading>
       <p className="text-sm text-mist">{m.results.keyboardSummary}</p>
-      <div className="overflow-x-auto"><div className="flex min-w-max flex-col items-center gap-1">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={format(m.results.keyboard, { name: selected.name })}><div className="flex min-w-max flex-col items-center gap-1">
         {rows.map((row, index) => <ul key={index} className="flex gap-1">{row.map(keycap)}</ul>)}
         <ul className="flex gap-1">{[" ", ...extras].map(keycap)}</ul>
       </div></div>
