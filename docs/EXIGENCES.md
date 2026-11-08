@@ -10,9 +10,9 @@ Mise à jour : 2026-11-08.
 
 | Statut | Nombre |
 |---|---|
-| Complet | 38 |
-| Partiel | 31 |
-| Non fait | 21 |
+| Complet | 79 |
+| Partiel | 10 |
+| Non fait | 1 |
 | **Total** | **90** |
 
 ## 3. Contraintes techniques
@@ -156,9 +156,9 @@ Mise à jour : 2026-11-08.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| TEST-01 | partiel | `src/**/*.test.ts` | 179 tests unitaires (21 fichiers) | Couvre l'authentification (dont limitation des tentatives et refus de liaison OAuth), les schémas Zod, les codes, le service de salles, la configuration serveur, la langue, l'intégrité du corpus et le seed. Les logiques à venir (course, bots, bonus, MPM) devront être testées. |
-| TEST-02 | partiel | `e2e/room.spec.ts`, `playwright.config.ts` | 5 tests de bout en bout | Inscription puis création de salle, arrivée et départ en direct, refus de création pour un invité, code inexistant, langue et thème. |
-| TEST-03 | partiel | `e2e/room.spec.ts` | — | Aucun test n'utilise OAuth. L'hôte s'inscrit avec un nom d'utilisateur + mot de passe ; le joueur qui rejoint est un invité. |
+| TEST-01 | complet | `src/**/*.test.ts` | 48 fichiers `*.test.ts` (524 tests) | Vitest sur la logique : authentification et limitation des tentatives, schémas Zod, codes, machine à états, service et accès des salles, moteur de course, mesures, classement, bonus, bots (graine), génération du texte, tampon de frappes, persistance des résultats, validation des images, statistiques, pagination, configuration serveur, langue, corpus et seed. |
+| TEST-02 | complet | `e2e/room.spec.ts`, `playwright.config.ts` | `e2e/room.spec.ts`, `e2e/race.spec.ts`, `e2e/profile.spec.ts`, `e2e/a11y.spec.ts`, `e2e/langue.spec.ts` | Playwright, en CI sur chaque pull request avec un PostgreSQL jetable : inscription, salles en direct dans deux navigateurs, configuration et décompte synchronisés, explorateur et partie rapide, course complète contre un bot, coller refusé, abandon confirmé, résultats et page enregistrée, profil (pseudonyme, photo), historique, audits axe dans les deux thèmes, clavier, langue. `e2e/perf.spec.ts` (mesure locale) est en `fixme` (PERF-03). |
+| TEST-03 | complet | `e2e/room.spec.ts` | idem TEST-02 | Aucun test n'utilise OAuth : les comptes sont créés par nom d'utilisateur + mot de passe, les autres joueurs sont des invités. |
 
 ## 6.2 Performance
 
@@ -189,13 +189,13 @@ Mise à jour : 2026-11-08.
 
 | Livrable | Statut | Notes |
 |---|---|---|
-| Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race. Accès de l'enseignant à confirmer ; commits à poursuivre régulièrement. |
-| URL de production | complet | https://typing-race-production-4a76.up.railway.app |
-| `README.md` | partiel | PostgreSQL via Docker Compose (`docker-compose.yml`), comptes de démonstration et commande de seed. Manque : captures d'écran. |
-| `docs/ARCHITECTURE.md` | partiel | Version initiale : vue d'ensemble, modèle de données, machine à états, ADR temps réel, flux temps réel actuels et prévus, approche prévue pour les bots. Manque pour la remise finale : ADR sur les bots, flux de course réels. |
+| Dépôt GitHub et historique régulier | partiel | https://github.com/devzr24/typing-race : une branche et une pull request par feature, commits Conventional Commits, fusions par commit de fusion. **Manque** : accès de l'enseignant à confirmer. |
+| URL de production | partiel | https://typing-race-production-4a76.up.railway.app — **hors service** : renvoie 404 « Application not found » depuis le 2026-11-07 (service Railway inactif). À rétablir avant la remise. |
+| `README.md` | complet | Présentation, captures d'écran (`docs/captures/`), technologies, installation avec PostgreSQL via Docker Compose, variables d'environnement, commandes de tests, comptes de démonstration. |
+| `docs/ARCHITECTURE.md` | complet | Version finale : vue d'ensemble, modèle de données, machine à états, événements et flux temps réel d'une course, gestion des bots, liste des ADR (temps réel : ADR 0002 ; bots : ADR 0015 et 0018). |
 | `docs/EXIGENCES.md` | complet | Ce fichier. |
 | `docs/DEMARCHE-CREATIVE.md` | non fait | Voir DES-01 à DES-03. |
-| `docs/IA.md` | non fait | `CLAUDE.md` et `AGENTS.md` sont déjà commités. |
+| `docs/IA.md` | partiel | Agents et outils, fichiers d'instructions commités, trois erreurs de l'IA (détection et correction), façon de travailler. **Manque** : la réflexion personnelle de l'étudiant (section marquée « à compléter »). |
 
 ## Choix documentés (ambiguïtés, section 2.2)
 
