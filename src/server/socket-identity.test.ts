@@ -33,6 +33,11 @@ describe("identityFromCookieHeader", () => {
     });
   });
 
+  it("utilise le nom d’affichage du JWT", async () => {
+    const cookie = await sessionCookie("authjs.session-token", { sub: "u-alice", username: "alice", name: "nouveau" });
+    expect(await identityFromCookieHeader(cookie)).toMatchObject({ displayName: "nouveau" });
+  });
+
   it("lit un invité depuis le cookie sécurisé (HTTPS)", async () => {
     const cookie = await sessionCookie("__Secure-authjs.session-token", {
       sub: "guest-123",
