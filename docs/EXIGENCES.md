@@ -47,7 +47,7 @@ Mise à jour : 2026-11-08.
 |---|---|---|---|---|
 | AUTH-01 | complet | `src/auth.ts`, `src/app/login/`, `src/app/register/`, `src/lib/auth/` | `src/lib/auth/username.test.ts`, `src/lib/auth/password.test.ts`, `src/lib/auth/account-linking.test.ts`, `src/lib/auth/auth.test.ts` | GitHub, Discord, et nom d'utilisateur + mot de passe (ADR 0004, 0005). Parcours OAuth vérifié manuellement. Un compte GitHub/Discord n'est jamais relié à une session déjà ouverte ; `/login` et `/register` redirigent une personne connectée (ADR 0012). |
 | AUTH-02 | complet | `src/auth.ts` (fournisseur `guest`), `src/lib/auth/schemas.ts`, `src/app/login/login-forms.tsx` | `src/lib/auth/schemas.test.ts`, `src/lib/auth/auth.test.ts`, `e2e/room.spec.ts` | Pseudo obligatoire de 3 à 20 caractères, vérifié dans l'action et dans le fournisseur Auth.js ; session d'invité dans le cookie signé d'Auth.js. |
-| AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx` | `src/lib/rooms/service.test.ts`, `e2e/room.spec.ts` (un invité ne peut pas créer de salle) | Un invité ne peut pas créer de salle : refus côté serveur et lien vers la connexion à la place du formulaire. Pas de photo pour l'invité ; avatar = initiale du nom. **Partiel** : l'historique n'existe pas encore (HIST-01), la règle « pas d'historique pour l'invité » reste à appliquer. |
+| AUTH-03 | partiel | `src/components/avatar.tsx`, `src/lib/rooms/actions.ts`, `src/app/home-actions.tsx`, `src/lib/race/persist.ts`, `src/app/races/[id]/page.tsx` | `src/lib/rooms/service.test.ts`, `src/lib/race/persist.test.ts`, `src/app/races/[id]/page.test.ts`, `e2e/room.spec.ts` | Un invité ne peut pas créer de salle ; avatar = initiale. Résultats invités sans userId, accès aux courses persistées refusé aux invités. **Partiel** : liste d'historique à venir (HIST-01). |
 | AUTH-04 | non fait | — | — | Seule la photo fournie par GitHub/Discord est affichée ; pas de téléversement. |
 | AUTH-05 | non fait | — | — | — |
 | AUTH-06 | non fait | — | — | Pas de page de profil. |
@@ -105,8 +105,8 @@ Mise à jour : 2026-11-08.
 | COURSE-07 | complet | `src/server/room-socket.ts`, `src/server/race-runtime.ts`, `src/lib/race/engine.ts`, `src/app/room/[code]/typing-zone.tsx` | `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts` | Confirmation dans un dialogue natif accessible avant race:abandon ; saisie figée puis résultat provisoire et piste. |
 | COURSE-08 | partiel | `src/server/room-socket.ts`, `src/lib/rooms/race-memory.ts`, `src/server/race-runtime.ts`, `src/app/room/[code]/typing-zone.tsx` | `src/server/race-runtime.test.ts`, `e2e/room.spec.ts`, `src/lib/race/typing-state.test.ts`, `e2e/race.spec.ts` (CI, non exécuté localement) | room:watch initialise la zone avec self ; à la reconnexion, tampon abandonné et nouvelle base serveur. Séquence initialisée à l’horloge pour dépasser celle d’avant rechargement. **Manque** : la reprise après rechargement n'est vérifiée par aucun test de bout en bout. |
 | COURSE-09 | complet | `src/lib/race/engine.ts`, `src/server/race-runtime.ts`, `src/lib/rooms/service.ts` | `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts` | Fin automatique (`finishRace`) dès qu'aucun coureur n'est encore en course (arrivés, abandons, départs, expulsions, déconnexions de plus de 30 s), même sans temps maximal, ou au temps maximal (les coureurs restants passent « temps écoulé »). |
-| COURSE-10 | partiel | `src/lib/race/ranking.ts`, `src/lib/race/engine.ts`, `src/lib/rooms/service.ts` | `src/lib/race/ranking.test.ts`, `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts` | Classement final : arrivés par temps, timeout par progression, puis abandons par progression figée. Statistiques finales diffusées et conservées en mémoire jusqu'au reset/close. **Manque** : affichage. |
-| COURSE-11 | non fait | — | — | — |
+| COURSE-10 | complet | `src/lib/race/ranking.ts`, `src/lib/race/engine.ts`, `src/lib/rooms/service.ts`, `src/components/race-results.tsx` | `src/lib/race/ranking.test.ts`, `src/lib/race/engine.test.ts`, `src/server/race-runtime.test.ts`, `e2e/race.spec.ts` (non exécuté localement) | Classement final : arrivés par temps, timeout par progression, puis abandons par progression figée. Statistiques diffusées, affichées et conservées en mémoire jusqu'au reset/close. |
+| COURSE-11 | complet | `src/app/room/[code]/room-view.tsx`, `src/lib/rooms/service.ts` | `src/lib/rooms/race.test.ts` | En résultats : hôte = nouvelle course / fermer ; autres restent (comportement par défaut) ou quittent. Configuration et participants conservés. |
 
 ## 5.7 Bots
 
@@ -131,18 +131,18 @@ Mise à jour : 2026-11-08.
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
-| RES-01 | non fait | — | — | — |
-| RES-02 | non fait | — | — | — |
-| RES-03 | non fait | — | — | — |
-| RES-04 | non fait | — | — | — |
-| RES-05 | non fait | — | — | Tables prévues dans `docs/architecture/modele-de-donnees.md`, non créées. |
+| RES-01 | complet | `src/components/race-results.tsx` | `e2e/race.spec.ts` (étendu, non exécuté localement) | Podium des trois premiers, avatars, noms et MPM. |
+| RES-02 | complet | `src/components/race-results.tsx`, `src/i18n/messages/` | `e2e/race.spec.ts` (étendu, non exécuté localement) | Classement complet ; métriques, durées et nombres formatés avec Intl en FR/EN. |
+| RES-03 | complet | `src/components/race-results.tsx`, `src/lib/race/results-visuals.ts` | `src/lib/race/results-visuals.test.ts` | SVG commun, axes gradués, motifs distincts, légende et résumé ; clavier AZERTY/QWERTY avec intensités et comptes accessibles. |
+| RES-04 | complet | `src/lib/race/persist.ts`, `src/components/race-results.tsx` | `src/lib/race/persist.test.ts` | Record strict au-dessus du meilleur MPM précédent (une première course n'est pas un record battu), courses terminées uniquement, indiqué au joueur local. |
+| RES-05 | complet | `prisma/schema.prisma`, `prisma/migrations/20261108120000_resultats/`, `src/lib/race/persist.ts`, `src/server/race-runtime.ts` | `src/lib/race/persist.test.ts`, `src/server/race-runtime.test.ts` | Une transaction finale dédupliquée si au moins un inscrit coureur ; invités/bots sans userId ; résultats diffusés sans attendre l'écriture, une nouvelle tentative après 2 s, puis échec journalisé sans casser la salle. |
 
 ## 5.10 Historique
 
 | ID | Statut | Fichiers principaux | Tests associés | Notes et choix |
 |---|---|---|---|---|
 | HIST-01 | non fait | — | — | — |
-| HIST-02 | non fait | — | — | — |
+| HIST-02 | partiel | `src/app/races/[id]/page.tsx`, `src/components/race-results.tsx` | `src/app/races/[id]/page.test.ts`, `e2e/race.spec.ts` (étendu, non exécuté localement) | Réaffichage complet réservé aux inscrits participants (sinon 404), métadonnées i18n ; navigation depuis l'historique paginé dans la feature suivante. |
 
 ## 5.11 Internationalisation
 
@@ -150,7 +150,7 @@ Mise à jour : 2026-11-08.
 |---|---|---|---|---|
 | I18N-01 | complet | `src/i18n/messages/fr.ts`, `src/i18n/messages/en.ts` | `src/i18n/messages.test.ts` | Libellés, erreurs (codes `ErrorCode`) et métadonnées des pages (`generateMetadata`) en FR et EN (ADR 0009). |
 | I18N-02 | complet | `src/components/preferences.tsx`, `src/i18n/server.ts`, `src/i18n/accept-language.ts` | `src/i18n/accept-language.test.ts`, `e2e/langue.spec.ts`, `e2e/room.spec.ts` (langue et thème) | Sélecteur dans l'en-tête de toutes les pages, choix conservé dans un cookie. Sans cookie, la langue suit `Accept-Language`, puis le français (ADR 0014). |
-| I18N-03 | partiel | `src/i18n/format.ts` | — | Aucune date ni statistique n'est encore affichée ; le formatage `Intl` selon la langue reste à mettre en place. |
+| I18N-03 | partiel | `src/i18n/format.ts`, `src/components/race-results.tsx` | `e2e/race.spec.ts` (non exécuté localement) | Résultats : nombres, pourcentages et durées via Intl selon FR/EN ; dates de l'historique à venir. |
 
 ## 6.1 Tests
 

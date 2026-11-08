@@ -46,6 +46,18 @@ test("course complète avec un bot et arrivée du joueur", async ({ page }) => {
   await expect(track.getByRole("listitem").filter({ has: page.getByText("vous", { exact: true }) }).getByText("Arrivé", { exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Résultat provisoire" })).toContainText("Arrivé");
   await expect(page.getByRole("heading", { name: "Résultats de la course" })).toBeVisible({ timeout: 30000 });
+  const podium = page.getByRole("region", { name: "Podium", exact: true });
+  const standings = page.getByRole("table", { name: "Classement complet" });
+  await expect(podium).toBeVisible();
+  await expect(podium.getByRole("listitem")).toHaveCount(2);
+  await expect(standings).toBeVisible();
+  await expect(standings.getByRole("row")).toHaveCount(3);
+  const rows = await standings.locator("tbody tr").allTextContents();
+  const podiumText = await podium.textContent();
+  await page.getByRole("link", { name: "Ouvrir les résultats enregistrés" }).click();
+  await expect(page).toHaveURL(/\/races\/[^/]+$/);
+  await expect(page.getByRole("table", { name: "Classement complet" }).locator("tbody tr")).toHaveText(rows);
+  await expect(page.getByRole("region", { name: "Podium", exact: true })).toHaveText(podiumText ?? "");
 });
 
 test("coller et déposer ne font pas progresser le joueur", async ({ page }) => {

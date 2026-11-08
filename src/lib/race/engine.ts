@@ -147,6 +147,7 @@ export function finalResults(state: RaceState) {
     accuracy: accuracy(r.correctKeystrokes, r.totalKeystrokes), errors: r.errors,
     elapsedMs: r.elapsedMs, bonuses: r.bonuses.map((b) => ({ ...b })),
     series: r.series.map((point) => ({ ...point })), missedKeys: { ...r.missedKeys },
+    raceId: undefined as string | undefined, isPersonalBest: false,
   })));
 }
 

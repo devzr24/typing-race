@@ -7,6 +7,7 @@ import { Check, Copy } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { io, type Socket } from "socket.io-client";
 import { Avatar } from "@/components/avatar";
+import { RaceResults } from "@/components/race-results";
 import { useFeedback } from "@/components/effects";
 import { DecodedCode, useEffectsEnabled } from "@/components/motion-effects";
 import { buttonClass, inputClass, primaryButtonClass } from "@/components/form-field";
@@ -223,7 +224,7 @@ export function RoomView({ initialRoom, selfId }: { initialRoom: PublicRoom; sel
           startsAt={room.race.startsAt} clockOffset={clockOffset} errorMode={room.config.errorMode}
           socket={raceConnection.socket} connected={connection === "live"} /> : null}
       </> : null}
-      {room.status === "RESULTATS" ? <h2 className="text-lg font-medium">{m.room.results}</h2> : null}
+      {room.status === "RESULTATS" && room.results ? <RaceResults results={room.results} selfId={selfId} canOpen={room.participants.some((p) => p.id === selfId && !p.isGuest)} /> : null}
       {isHost ? <div className="flex flex-wrap gap-3">
         {room.status === "EN_ATTENTE" ? <div className="flex flex-col gap-1">
           <button className={primaryButtonClass} disabled={!!startError || pending || connection !== "live"} aria-describedby={startError ? "start-reason" : undefined} onClick={() => command({ type: "start" })}>{m.room.start}</button>

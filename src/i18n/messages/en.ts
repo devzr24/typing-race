@@ -124,6 +124,18 @@ export const en: Messages = {
     loginRequiredTitle: "Login required",
     notJoinedTitle: "Room not joined",
   },
+  results: {
+    podium: "Podium", table: "Full standings", rank: "Rank", participant: "Participant",
+    rawMpm: "Raw WPM", errors: "Errors", time: "Time", status: "Status", bonuses: "Received bonuses",
+    none: "None", unavailable: "—", personalBest: "Personal best", permalink: "Open saved results",
+    chart: "WPM over time", seconds: "Time (seconds)", legend: "Participant legend",
+    chartSummary: "Net WPM over elapsed time. Each participant has a distinct line pattern. Final values are in the standings.",
+    seriesSummary: "{name}: {mpm} WPM after {time}.",
+    chooseParticipant: "Keyboard participant", keyboard: "Missed keys — {name}",
+    keyboardSummary: "QWERTY keyboard. A stronger shade means more errors. Each key’s error count is available to assistive reading.",
+    keyErrors: { one: ": {count} error", other: ": {count} errors" }, space: "Space",
+    outcomes: { finished: "Finished", timeout: "Time up", abandoned: "Abandoned" },
+  },
   race: {
     track: "Race track", you: "you", inputLabel: "Typing area",
     mpm: "WPM", netMpm: "Net WPM", accuracy: "Accuracy",

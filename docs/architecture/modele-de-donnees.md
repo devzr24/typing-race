@@ -13,6 +13,8 @@ erDiagram
     Room ||--o{ RoomBot : "bots (CONF-10)"
     Room ||--o{ RoomInvite : "liens d'invitation (SALLE-04)"
     Room ||--o{ RoomBan : "expulsions (SALLE-07)"
+    Race ||--|{ RaceResult : "classement complet (RES-05)"
+    User |o--o{ RaceResult : "historique inscrit"
 
     User {
         string id PK "cuid"
@@ -99,6 +101,34 @@ erDiagram
         string value "minuscules"
         int frequencyRank "1 = le plus fréquent"
     }
+    Race {
+        string id PK
+        string roomCode "copie, sans FK vers la salle éphémère"
+        string text "texte initial réellement utilisé"
+        json config "copie de la configuration"
+        datetime startedAt
+        datetime endedAt
+    }
+    RaceResult {
+        string id PK
+        string raceId FK "suppression en cascade"
+        string userId FK "nullable, SetNull ; index avec createdAt"
+        string displayName
+        string image
+        enum kind "UTILISATEUR | INVITE | BOT"
+        int rank
+        float wpm "MPM net"
+        float rawWpm "MPM brut"
+        float accuracy
+        int errors
+        int timeMs "nullable"
+        enum outcome "TERMINE | TEMPS_ECOULE | ABANDON"
+        json wpmSeries "points t (ms), mpm"
+        json missedKeys "erreurs par caractère attendu"
+        json bonuses "bonus reçus avec horodatage et cible"
+        boolean isPersonalBest
+        datetime createdAt
+    }
 ```
 
 | Table | Rôle |
@@ -110,6 +140,8 @@ erDiagram
 | `RoomBot` | Bot ajouté par l'hôte (CONF-10) : compte dans la capacité, jamais hôte ; niveaux de l'[ADR 0015](../adr/0015-moteur-des-bots.md). |
 | `RoomInvite` | Lien d'invitation à usage unique (SALLE-04) : seule l'empreinte du jeton est stockée ; IP et personne liées à la première utilisation. |
 | `RoomBan` | Personne expulsée d'une salle (SALLE-07). |
+| `Race` | Instantané final indépendant de la salle : code, texte, configuration et dates. Créé uniquement si un inscrit a couru (RES-05). |
+| `RaceResult` | Classement et métriques de tous les coureurs, invités et bots compris ; historique lié uniquement aux inscrits, index `(userId, createdAt)`. |
 | `Passage` | Corpus du mode cohérent (CONF-03) : extraits du domaine public, FR et EN, chargés par le seed ([ADR 0013](../adr/0013-seed-au-demarrage.md)). Pas encore utilisé par l'application. |
 | `Word` | Dictionnaire du mode aléatoire (CONF-03) : environ 1000 mots courants par langue, classés par fréquence (rang approximatif). Pas encore utilisé par l'application. |
 
@@ -122,46 +154,20 @@ Remarques :
 - Pas de table `Session` : sessions JWT dans un cookie chiffré ([ADR 0004](../adr/0004-authentification-authjs.md)).
 - `_prisma_migrations` (technique) suit les migrations appliquées ; visible via `/api/health`.
 
-## Prévu (non créé en base)
+## Persistance des résultats (RES-01 à RES-05)
 
-Tables envisagées pour les exigences restantes ([matrice](../EXIGENCES.md)).
-Les noms et champs sont indicatifs : chaque table sera conçue, migrée et documentée avec
-l'exigence qui la demande.
-
-```mermaid
-erDiagram
-    Room ||--o{ Race : "organise (COURSE-01)"
-    Passage ||--o{ Race : "texte cohérent (CONF-03), table déjà créée"
-    Race ||--|{ RaceResult : "produit (RES-05)"
-    User |o--o{ RaceResult : "historique (HIST-01)"
-
-    Race {
-        string id PK
-        string roomId FK
-        string text "texte réellement tapé"
-        string settings "copie de la configuration"
-        datetime startedAt
-        datetime endedAt
-    }
-    RaceResult {
-        string id PK
-        string raceId FK
-        string userId FK "null pour un invité ou un bot"
-        string displayName
-        enum kind "UTILISATEUR | INVITE | BOT"
-        int rank
-        float wpm
-        float rawWpm
-        float accuracy
-        int errors
-        int timeMs
-        enum outcome "TERMINE | TEMPS_ECOULE | ABANDON (COURSE-10)"
-        json wpmSeries "série temporelle du MPM (RES-03)"
-    }
-```
+Migration : `20261108120000_resultats`, générée par comparaison de schémas sans connexion à la base.
+Le runtime écrit uniquement après la réussite de `finishRace`, en une transaction avec création
+imbriquée du classement ; la finalisation d'une même course est dédupliquée en mémoire.
+Une erreur de persistance est journalisée sans empêcher l'affichage des résultats en salle.
 
 - **Invités et bots** : une ligne `RaceResult` sans `userId`, pour que la page de résultats
   réaffichée depuis l'historique soit complète (HIST-02). Seuls les utilisateurs connectés ont un
   historique (RES-05, AUTH-03).
-- **Historique** (HIST-01, HIST-02) : liste paginée des `RaceResult` de l'utilisateur ; la page de
-  résultats est reconstruite à partir de `Race` et de ses `RaceResult`.
+- **Record personnel** : MPM net strictement supérieur au maximum des courses terminées précédentes
+  de cet utilisateur ; première course terminée = record. Abandons et temps écoulés exclus.
+- **Réaffichage** : `/races/[id]` reconstruit les résultats à partir de `Race` et `RaceResult` et
+  renvoie 404 si le visiteur n'est pas un inscrit ayant couru cette course. Les identifiants
+  utilisateur ne sont pas transmis aux clients. Supprimer un utilisateur conserve le classement
+  (`SetNull`), supprimer une course supprime ses lignes (`Cascade`).
+- **Prévu (HIST-01)** : liste paginée des courses de l'utilisateur, dans la feature suivante.

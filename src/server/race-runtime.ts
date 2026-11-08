@@ -6,6 +6,7 @@ import {
 } from "@/lib/race/engine";
 import { activeRaces, type ActiveRace } from "@/lib/rooms/race-memory";
 import { finishRace } from "@/lib/rooms/service";
+import { persistRace } from "@/lib/race/persist";
 import type { RoomStore } from "@/lib/rooms/store";
 import type { Room } from "@/lib/rooms/types";
 import type { ServerToClientEvents } from "@/lib/rooms/events";
@@ -44,13 +45,35 @@ export function startRaceRuntime(store: RoomStore, room: Room, race: ActiveRace,
     const self = raceSelf(state, id);
     if (self) transport()?.self(room.code, id, self);
   }
+  function publishResults() {
+    if (activeRaces.get(room.code) !== race || !race.results) return;
+    transport()?.room(room.code, "race:results", race.results);
+    void publish(room.code).catch((error: unknown) => { console.error("> race publish", error); });
+  }
+  async function saveResults(retry = true): Promise<void> {
+    try {
+      const saved = await persistRace(room, race);
+      if (saved && activeRaces.get(room.code) === race && race.results) {
+        race.results = race.results.map((result, index) => ({
+          ...result, raceId: saved.id, isPersonalBest: saved.personalBests[index],
+        }));
+        publishResults();
+      }
+    } catch (error: unknown) {
+      if (!retry) { console.error("> race persist", error); return; }
+      setTimeout(() => {
+        void saveResults(false);
+      }, 2000);
+    }
+  }
   function finish() {
     if (!current() || finishing || !isOver(state)) return;
     finishing = true;
-    void finishRace(store, room.code, publish).then((result) => {
+    void finishRace(store, room.code).then((result) => {
       if (!result.ok) finishing = false;
-      if (result.ok && activeRaces.get(room.code) === race && race.results) {
-        transport()?.room(room.code, "race:results", race.results);
+      if (result.ok) {
+        publishResults();
+        void saveResults();
       }
     }).catch((error: unknown) => { finishing = false; console.error("> race finish", error); });
   }
